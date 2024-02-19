@@ -11,9 +11,9 @@ enum class PrefixLengthEnum(val value: Int) {
     DIGIT_12(value = 12);
 
     companion object {
-        fun findByCode(code: Int): PrefixLengthEnum? {
+        fun findByCode(code: Int): PrefixLengthEnum {
             val codes = entries.associateBy(PrefixLengthEnum::value)
-            return codes[code]
+            return codes[code] ?: DIGIT_6
         }
     }
 }

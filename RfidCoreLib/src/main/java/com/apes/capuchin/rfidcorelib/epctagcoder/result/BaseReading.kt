@@ -2,19 +2,19 @@ package com.apes.capuchin.rfidcorelib.epctagcoder.result
 
 abstract class BaseReading : Comparable<BaseReading> {
 
-    abstract var epcScheme: String
-    abstract var applicationIdentifier: String
-    abstract var tagSize: String
-    abstract var filterValue: String
-    abstract var partitionValue: String
-    abstract var prefixLength: String
-    abstract var companyPrefix: String
-    abstract var epcPureIdentityURI: String
-    abstract var epcTagURI: String
-    abstract var epcRawURI: String
-    abstract var binary: String
-    abstract var rfidTag: String
-    abstract var rssi: Int
+    abstract var epcScheme: String?
+    abstract var applicationIdentifier: String?
+    abstract var tagSize: String?
+    abstract var filterValue: String?
+    abstract var partitionValue: String?
+    abstract var prefixLength: String?
+    abstract var companyPrefix: String?
+    abstract var epcPureIdentityURI: String?
+    abstract var epcTagURI: String?
+    abstract var epcRawURI: String?
+    abstract var binary: String?
+    abstract var rfidTag: String?
+    abstract var rssi: Int?
 
     override fun hashCode(): Int = rfidTag.hashCode()
 
@@ -35,6 +35,6 @@ abstract class BaseReading : Comparable<BaseReading> {
     }
 
     override fun compareTo(other: BaseReading): Int {
-        return other.rssi.compareTo(this.rssi)
+        return (other.rssi)?.compareTo(this.rssi ?: 0) ?: 0
     }
 }

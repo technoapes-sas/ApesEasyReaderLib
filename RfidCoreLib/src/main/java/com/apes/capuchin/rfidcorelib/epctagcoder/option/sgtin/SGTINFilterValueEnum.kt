@@ -12,9 +12,9 @@ enum class SGTINFilterValueEnum(val value: Int) {
     COMPONENT_7(value = 7);
 
     companion object {
-        fun findByValue(value: Int): SGTINFilterValueEnum? {
+        fun findByValue(value: Int): SGTINFilterValueEnum {
             val values = entries.associateBy(SGTINFilterValueEnum::value)
-            return values[value]
+            return values[value] ?: ALL_OTHERS_0
         }
     }
 }

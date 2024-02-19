@@ -14,9 +14,9 @@ enum class SGTINExtensionDigitEnum(val value: Int) {
     EXTENSION_9(value = 9);
 
     companion object {
-        fun findByValue(value: Int): SGTINExtensionDigitEnum? {
+        fun findByValue(value: Int): SGTINExtensionDigitEnum {
             val values = entries.associateBy(SGTINExtensionDigitEnum::value)
-            return values[value]
+            return values[value] ?: EXTENSION_0
         }
     }
 }
