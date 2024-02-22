@@ -11,9 +11,9 @@ enum class SGTINHeaderEnum(val value: String) {
     abstract fun getTagSize(): Int
 
     companion object {
-        fun findByValue(value: String): SGTINHeaderEnum? {
+        fun findByValue(value: String): SGTINHeaderEnum {
             val values = entries.associateBy(SGTINHeaderEnum::value)
-            return values[value]
+            return values[value] ?: HEADER_00110000
         }
     }
 }

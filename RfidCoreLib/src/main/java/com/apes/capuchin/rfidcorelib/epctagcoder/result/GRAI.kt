@@ -1,7 +1,7 @@
 package com.apes.capuchin.rfidcorelib.epctagcoder.result
 
-class SGTIN : BaseReading() {
-
+class GRAI : BaseReading() {
+    
     override var epcScheme: String? = null
     override var applicationIdentifier: String? = null
     override var tagSize: String? = null
@@ -15,11 +15,9 @@ class SGTIN : BaseReading() {
     override var binary: String? = null
     override var rfidTag: String? = null
     override var rssi: Int? = null
-    
-    var extensionDigit: String? = null
-    var itemReference: String? = null
+
+    var assetType: String? = null
     var serial: String? = null
-    var checkDigit: String? = null
 
     override fun toString(): String {
         val json = StringBuilder().apply {
@@ -30,16 +28,15 @@ class SGTIN : BaseReading() {
             append(String.format(", \"partitionValue\": \"%s\"", partitionValue))
             append(String.format(", \"prefixLength\": \"%s\"", prefixLength))
             append(String.format(", \"companyPrefix\": \"%s\"", companyPrefix))
-            append(String.format(", \"extensionDigit\": \"%s\"", extensionDigit))
-            append(String.format(", \"itemReference\": \"%s\"", itemReference))
+            append(String.format(", \"assetType\": \"%s\"", assetType))
             append(String.format(", \"serial\": \"%s\"", serial))
-            append(String.format(", \"checkDigit\": \"%s\"", checkDigit))
             append(String.format(", \"epcPureIdentityURI\": \"%s\"", epcPureIdentityURI))
             append(String.format(", \"epcTagURI\": \"%s\"", epcTagURI))
             append(String.format(", \"epcRawURI\": \"%s\"", epcRawURI))
             append(String.format(", \"binary\": \"%s\"", binary))
             append(String.format(", \"rfidTag\": \"%s\"", rfidTag)).append(" }")
         }
+
         return json.toString()
     }
 }

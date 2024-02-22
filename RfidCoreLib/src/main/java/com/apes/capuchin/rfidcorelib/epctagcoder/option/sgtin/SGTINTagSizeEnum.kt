@@ -20,9 +20,9 @@ enum class SGTINTagSizeEnum(val value: Int) {
     abstract fun getSerialMaxValue(): Long?
 
     companion object {
-        fun findByValue(value: Int?): SGTINTagSizeEnum? {
+        fun findByValue(value: Int?): SGTINTagSizeEnum {
             val values = entries.associateBy(SGTINTagSizeEnum::value)
-            return values[value]
+            return values[value] ?: BITS_96
         }
     }
 }
