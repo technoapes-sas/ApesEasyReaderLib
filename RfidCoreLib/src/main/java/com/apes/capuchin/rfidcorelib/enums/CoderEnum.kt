@@ -1,6 +1,6 @@
 package com.apes.capuchin.rfidcorelib.enums
 
-enum class CoderEnum(val key: String = "") {
+enum class CoderEnum(val key: String? = null) {
 
     CPI(key = "cpi"),
     GDTI(key = "gdti"),
@@ -12,7 +12,7 @@ enum class CoderEnum(val key: String = "") {
     NONE;
 
     companion object {
-        fun getCoder(key: String): CoderEnum {
+        fun getCoder(key: String?): CoderEnum {
             val coder = entries.associateBy(CoderEnum::key)
             return coder[key] ?: NONE
         }

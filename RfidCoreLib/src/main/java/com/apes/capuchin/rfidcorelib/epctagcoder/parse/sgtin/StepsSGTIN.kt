@@ -1,37 +1,45 @@
-package com.apes.capuchin.rfidcorelib.epctagcoder.parse.grai
+package com.apes.capuchin.rfidcorelib.epctagcoder.parse.sgtin
 
-import com.apes.capuchin.rfidcorelib.epctagcoder.option.grai.GRAIFilterValueEnum
-import com.apes.capuchin.rfidcorelib.epctagcoder.option.grai.GRAITagSizeEnum
-import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.AssetTypeStep
+import com.apes.capuchin.rfidcorelib.epctagcoder.option.PrefixLengthEnum
+import com.apes.capuchin.rfidcorelib.epctagcoder.option.TableItem
+import com.apes.capuchin.rfidcorelib.epctagcoder.option.sgtin.SGTINExtensionDigitEnum
+import com.apes.capuchin.rfidcorelib.epctagcoder.option.sgtin.SGTINFilterValueEnum
+import com.apes.capuchin.rfidcorelib.epctagcoder.option.sgtin.SGTINTagSizeEnum
 import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.BuildStep
 import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.ChoiceStep
+import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.ExtensionDigitStep
 import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.FilterValueStep
+import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.ItemReferenceStep
 import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.SerialStep
 import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.TagSizeStep
 
-class GRAISteps : ChoiceStep, AssetTypeStep, SerialStep, TagSizeStep,
+class StepsSGTIN : ChoiceStep, ExtensionDigitStep, ItemReferenceStep, SerialStep, TagSizeStep,
     FilterValueStep, BuildStep {
 
+    var extensionDigit: SGTINExtensionDigitEnum? = null
     var companyPrefix: String? = null
-    var tagSize: GRAITagSizeEnum? = null
-    var filterValue: GRAIFilterValueEnum? = null
+    var prefixLength: PrefixLengthEnum? = null
+    var tagSize: SGTINTagSizeEnum? = null
+    var filterValue: SGTINFilterValueEnum? = null
     var itemReference: String? = null
     var serial: String? = null
     var rfidTag: String? = null
     var epcTagURI: String? = null
     var epcPureIdentityURI: String? = null
+    var tableItem: TableItem? = null
+    var remainder: Int? = null
 
-    override fun build(): ParseGRAI = ParseGRAI(this)
+    override fun build(): ParseSGTIN = ParseSGTIN(this)
 
     override fun withFilterValue(filterValue: Any?): BuildStep {
-        if (filterValue is GRAIFilterValueEnum) {
+        if (filterValue is SGTINFilterValueEnum) {
             this.filterValue = filterValue
         }
         return this
     }
 
     override fun withTagSize(tagSize: Any?): FilterValueStep {
-        if (tagSize is GRAITagSizeEnum) {
+        if (tagSize is SGTINTagSizeEnum) {
             this.tagSize = tagSize
         }
         return this
@@ -47,7 +55,14 @@ class GRAISteps : ChoiceStep, AssetTypeStep, SerialStep, TagSizeStep,
         return this
     }
 
-    override fun withCompanyPrefix(companyPrefix: String?): BuildStep {
+    override fun withExtensionDigit(extensionDigit: Any?): ItemReferenceStep {
+        if (extensionDigit is SGTINExtensionDigitEnum) {
+            this.extensionDigit = extensionDigit
+        }
+        return this
+    }
+
+    override fun withCompanyPrefix(companyPrefix: String?): ExtensionDigitStep {
         this.companyPrefix = companyPrefix
         return this
     }

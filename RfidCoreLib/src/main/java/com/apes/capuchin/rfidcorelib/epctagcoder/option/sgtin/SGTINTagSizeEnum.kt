@@ -1,6 +1,6 @@
 package com.apes.capuchin.rfidcorelib.epctagcoder.option.sgtin
 
-enum class SGTINTagSizeEnum(val value: Int) {
+enum class SGTINTagSizeEnum(val value: Int? = null) {
     BITS_96(value = 96) {
         override fun getHeader(): Int = 48
         override fun getSerialBitCount(): Int = 38
@@ -12,6 +12,12 @@ enum class SGTINTagSizeEnum(val value: Int) {
         override fun getSerialBitCount(): Int = 140
         override fun getSerialMaxLength(): Int = 20
         override fun getSerialMaxValue(): Long? = null
+    },
+    UNKNOWN {
+        override fun getHeader(): Int = 0
+        override fun getSerialBitCount(): Int = 0
+        override fun getSerialMaxLength(): Int = 0
+        override fun getSerialMaxValue(): Long? = null
     };
 
     abstract fun getHeader(): Int
@@ -22,7 +28,7 @@ enum class SGTINTagSizeEnum(val value: Int) {
     companion object {
         fun findByValue(value: Int?): SGTINTagSizeEnum {
             val values = entries.associateBy(SGTINTagSizeEnum::value)
-            return values[value] ?: BITS_96
+            return values[value] ?: UNKNOWN
         }
     }
 }

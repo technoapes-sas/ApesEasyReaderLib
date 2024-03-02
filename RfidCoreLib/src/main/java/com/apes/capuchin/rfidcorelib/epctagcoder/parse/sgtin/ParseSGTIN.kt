@@ -7,13 +7,7 @@ import com.apes.capuchin.rfidcorelib.epctagcoder.option.sgtin.SGTINFilterValueEn
 import com.apes.capuchin.rfidcorelib.epctagcoder.option.sgtin.SGTINHeaderEnum
 import com.apes.capuchin.rfidcorelib.epctagcoder.option.sgtin.SGTINTagSizeEnum
 import com.apes.capuchin.rfidcorelib.epctagcoder.option.sgtin.partitiontable.SGTINPartitionTableList
-import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.BuildStep
 import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.ChoiceStep
-import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.ExtensionDigitStep
-import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.FilterValueStep
-import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.ItemReferenceStep
-import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.SerialStep
-import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.TagSizeStep
 import com.apes.capuchin.rfidcorelib.epctagcoder.result.SGTIN
 import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.binToDec
 import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.binToHex
@@ -27,51 +21,34 @@ import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.stringToBin
 import java.util.regex.Pattern
 import kotlin.math.ceil
 
-class ParseSGTIN private constructor(steps: Steps) {
+class ParseSGTIN(steps: StepsSGTIN) {
 
-    private var sgtin: SGTIN
-    private var extensionDigit: SGTINExtensionDigitEnum
-    private var companyPrefix: String
-    private var prefixLength: PrefixLengthEnum
-    private var tagSize: SGTINTagSizeEnum
-    private var filterValue: SGTINFilterValueEnum
-    private var itemReference: String
-    private var serial: String
-    private var rfidTag: String
-    private var epcTagURI: String
-    private var epcPureIdentityURI: String
-    private var tableItem: TableItem
-    private var remainder: Int
+    private var companyPrefix: String = steps.companyPrefix.orEmpty()
+    private var itemReference: String = steps.itemReference.orEmpty()
+    private var serial: String = steps.serial.orEmpty()
+    private var rfidTag: String = steps.rfidTag.orEmpty()
+    private var epcTagURI: String = steps.epcTagURI.orEmpty()
+    private var epcPureIdentityURI: String = steps.epcPureIdentityURI.orEmpty()
+    private var remainder: Int = steps.remainder ?: 0
+
+    private var extensionDigit = steps.extensionDigit ?: SGTINExtensionDigitEnum.EXTENSION_0
+    private var prefixLength = steps.prefixLength ?: PrefixLengthEnum.DIGIT_6
+    private var tagSize = steps.tagSize ?: SGTINTagSizeEnum.BITS_96
+    private var filterValue = steps.filterValue ?: SGTINFilterValueEnum.ALL_OTHERS_0
+    private var tableItem = steps.tableItem ?: TableItem()
+
+    private val sgtin: SGTIN = SGTIN()
 
     init {
-        extensionDigit = steps.extensionDigit ?: SGTINExtensionDigitEnum.EXTENSION_0
-        companyPrefix = steps.companyPrefix.orEmpty()
-        prefixLength = steps.prefixLength ?: PrefixLengthEnum.DIGIT_6
-        tagSize = steps.tagSize ?: SGTINTagSizeEnum.BITS_96
-        filterValue = steps.filterValue ?: SGTINFilterValueEnum.ALL_OTHERS_0
-        itemReference = steps.itemReference.orEmpty()
-        serial = steps.serial.orEmpty()
-        rfidTag = steps.rfidTag.orEmpty()
-        epcTagURI = steps.epcTagURI.orEmpty()
-        epcPureIdentityURI = steps.epcPureIdentityURI.orEmpty()
-        tableItem = steps.tableItem ?: TableItem()
-        remainder = steps.remainder ?: 0
-        sgtin = SGTIN()
         parse()
     }
 
     private fun handleParseWithRfidTag(sgtinPartitionTableList: SGTINPartitionTableList) {
+
         val inputBin = rfidTag.hexToBin()
         val headerBin = inputBin.substring(0, 8)
         val filterBin = inputBin.substring(8, 11)
         val partitionBin = inputBin.substring(11, 14)
-
-        tagSize = SGTINTagSizeEnum.findByValue(
-            SGTINHeaderEnum.findByValue(headerBin).getTagSize()
-        )
-        tableItem = sgtinPartitionTableList.getPartitionByValue(
-            partitionBin.binToDec().toInt()
-        ) ?: TableItem()
 
         val filterDec = filterBin.toLong(2).toString()
         val companyPrefixBin = inputBin.substring(14, 14 + (tableItem.m ?: 0))
@@ -86,8 +63,14 @@ class ParseSGTIN private constructor(steps: Steps) {
             .binToDec()
             .strZero(tableItem.digits ?: 0)
         val extensionDec = itemReferenceWithExtensionDec.substring(0, 1)
-        itemReference = itemReferenceWithExtensionDec.substring(1)
 
+        tagSize = SGTINTagSizeEnum.findByValue(
+            SGTINHeaderEnum.findByValue(headerBin).getTagSize()
+        )
+        tableItem = sgtinPartitionTableList.getPartitionByValue(
+            partitionBin.binToDec().toInt()
+        ) ?: TableItem()
+        itemReference = itemReferenceWithExtensionDec.substring(1)
         serial = when (tagSize.getSerialBitCount()) {
             140 -> {
                 serialBin = serialBin.convertBinToBit(7, 8)
@@ -96,7 +79,6 @@ class ParseSGTIN private constructor(steps: Steps) {
 
             else -> serialBin.binToDec()
         }
-
         companyPrefix = companyPrefixDec.strZero(tableItem.l ?: 0)
         extensionDigit = SGTINExtensionDigitEnum.findByValue(extensionDec.toInt())
         filterValue = SGTINFilterValueEnum.findByValue(filterDec.toInt())
@@ -151,12 +133,17 @@ class ParseSGTIN private constructor(steps: Steps) {
             }
 
             else -> {
-                if (companyPrefix.isEmpty()) {
-                    throw IllegalArgumentException("Company Prefix is invalid. Length not found in the partition table")
+                when {
+                    companyPrefix.isEmpty() -> {
+                        throw IllegalArgumentException("Company Prefix is invalid. Length not " +
+                                "found in the partition table")
+                    }
+                    else -> {
+                        prefixLength = PrefixLengthEnum.findByCode(companyPrefix.length)
+                        validateExtensionDigitAndItemReference()
+                        validateSerial()
+                    }
                 }
-                prefixLength = PrefixLengthEnum.findByCode(companyPrefix.length)
-                validateExtensionDigitAndItemReference()
-                validateSerial()
             }
         }
         tableItem = sgtinPartitionTableList.getPartitionByL(prefixLength.value) ?: TableItem()
@@ -238,8 +225,8 @@ class ParseSGTIN private constructor(steps: Steps) {
 
     private fun validateSerial() {
         when (val tagSizeEnum = SGTINTagSizeEnum.findByValue(tagSize.value)) {
-            SGTINTagSizeEnum.BITS_198 -> {
-                if (serial.length > tagSizeEnum.getSerialMaxLength()) {
+            SGTINTagSizeEnum.BITS_198 -> when {
+                serial.length > tagSizeEnum.getSerialMaxLength() -> {
                     throw IllegalArgumentException(
                         "Serial value is out of range. " +
                                 "Should be up to 20 alphanumeric characters"
@@ -248,14 +235,16 @@ class ParseSGTIN private constructor(steps: Steps) {
             }
 
             SGTINTagSizeEnum.BITS_96 -> {
-                if (serial.toLong() > (tagSizeEnum.getSerialMaxValue() ?: 0L)) {
-                    throw IllegalArgumentException(
-                        "Serial value is out of range. " +
-                                "Should be less than or equal 274,877,906,943"
-                    )
-                }
-                if (serial.startsWith("0")) {
-                    throw IllegalArgumentException("Serial with leading zeros is not allowed")
+                when {
+                    serial.toLong() > (tagSizeEnum.getSerialMaxValue() ?: 0L) -> {
+                        throw IllegalArgumentException(
+                            "Serial value is out of range. " +
+                                    "Should be less than or equal 274,877,906,943"
+                        )
+                    }
+                    serial.startsWith("0") -> {
+                        throw IllegalArgumentException("Serial with leading zeros is not allowed")
+                    }
                 }
             }
         }
@@ -263,82 +252,20 @@ class ParseSGTIN private constructor(steps: Steps) {
 
     private fun validateExtensionDigitAndItemReference() {
         val value = StringBuilder().append(extensionDigit.value).append(itemReference).toString()
-        if (value.length != tableItem.digits) {
-            throw IllegalArgumentException("Concatenation between Extension Digit \"${extensionDigit.value}\" and Item Reference \"$itemReference\" has $value.length length and should have ${tableItem.digits} length")
+        when {
+            value.length != tableItem.digits -> {
+                throw IllegalArgumentException("Concatenation between Extension Digit " +
+                        "\"${extensionDigit.value}\" and Item Reference \"$itemReference\" has " +
+                        "$value.length length and should have ${tableItem.digits} length")
+            }
         }
     }
 
-    fun getSGTIN() = sgtin
+    fun getSGTIN(): SGTIN = sgtin
 
-    fun getRfidTag() = getBinary().binToHex()
+    fun getRfidTag(): String = getBinary().binToHex()
 
-    private class Steps : ChoiceStep, ExtensionDigitStep, ItemReferenceStep, SerialStep, TagSizeStep,
-        FilterValueStep, BuildStep {
-
-        var extensionDigit: SGTINExtensionDigitEnum? = null
-        var companyPrefix: String? = null
-        var prefixLength: PrefixLengthEnum? = null
-        var tagSize: SGTINTagSizeEnum? = null
-        var filterValue: SGTINFilterValueEnum? = null
-        var itemReference: String? = null
-        var serial: String? = null
-        var rfidTag: String? = null
-        var epcTagURI: String? = null
-        var epcPureIdentityURI: String? = null
-        var tableItem: TableItem? = null
-        var remainder: Int? = null
-
-        override fun build(): ParseSGTIN = ParseSGTIN(this)
-
-        override fun withFilterValue(filterValue: Any?): BuildStep {
-            if (filterValue is SGTINFilterValueEnum) {
-                this.filterValue = filterValue
-            }
-            return this
-        }
-
-        override fun withTagSize(tagSize: Any?): FilterValueStep {
-            if (tagSize is SGTINTagSizeEnum) {
-                this.tagSize = tagSize
-            }
-            return this
-        }
-
-        override fun withSerial(serial: String?): TagSizeStep {
-            this.serial = serial
-            return this
-        }
-
-        override fun withItemReference(itemReference: String?): SerialStep {
-            this.itemReference = itemReference
-            return this
-        }
-
-        override fun withExtensionDigit(extensionDigit: Any?): ItemReferenceStep {
-            if (extensionDigit is SGTINExtensionDigitEnum) {
-                this.extensionDigit = extensionDigit
-            }
-            return this
-        }
-
-        override fun withCompanyPrefix(companyPrefix: String?): ExtensionDigitStep {
-            this.companyPrefix = companyPrefix
-            return this
-        }
-
-        override fun withRFIDTag(rfidTag: String?): BuildStep {
-            this.rfidTag = rfidTag
-            return this
-        }
-
-        override fun withEPCTagURI(epcTagURI: String?): BuildStep {
-            this.epcTagURI = epcTagURI
-            return this
-        }
-
-        override fun withEPCPureIdentityURI(epcPureIdentityURI: String?): TagSizeStep {
-            this.epcPureIdentityURI = epcPureIdentityURI
-            return this
-        }
+    companion object {
+        fun Builder(): ChoiceStep = StepsSGTIN()
     }
 }

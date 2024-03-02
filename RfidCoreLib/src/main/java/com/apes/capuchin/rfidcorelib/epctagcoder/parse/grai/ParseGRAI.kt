@@ -6,6 +6,7 @@ import com.apes.capuchin.rfidcorelib.epctagcoder.option.grai.GRAIFilterValueEnum
 import com.apes.capuchin.rfidcorelib.epctagcoder.option.grai.GRAIHeaderEnum
 import com.apes.capuchin.rfidcorelib.epctagcoder.option.grai.GRAITagSizeEnum
 import com.apes.capuchin.rfidcorelib.epctagcoder.option.grai.partitiontablelist.GRAIPartitionTableList
+import com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces.ChoiceStep
 import com.apes.capuchin.rfidcorelib.epctagcoder.result.GRAI
 import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.binToDec
 import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.binToHex
@@ -15,7 +16,7 @@ import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.strZero
 import java.util.regex.Pattern
 import kotlin.math.ceil
 
-class ParseGRAI(steps: GRAISteps) {
+class ParseGRAI(steps: StepsGRAI) {
 
     private var grai: GRAI
     private var companyPrefix: String
@@ -189,4 +190,8 @@ class ParseGRAI(steps: GRAISteps) {
     fun getGRAI() = grai
 
     fun getRfidTag() = getBinary().binToHex()
+
+    companion object {
+        fun Builder(): ChoiceStep = StepsGRAI()
+    }
 }

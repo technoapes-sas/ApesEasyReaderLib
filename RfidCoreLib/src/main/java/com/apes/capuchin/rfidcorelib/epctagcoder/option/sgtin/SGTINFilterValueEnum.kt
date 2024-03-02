@@ -1,6 +1,6 @@
 package com.apes.capuchin.rfidcorelib.epctagcoder.option.sgtin
 
-enum class SGTINFilterValueEnum(val value: Int) {
+enum class SGTINFilterValueEnum(val value: Int? = null) {
 
     ALL_OTHERS_0(value = 0),
     POS_ITEM_1(value = 1),
@@ -9,12 +9,13 @@ enum class SGTINFilterValueEnum(val value: Int) {
     INNER_PACK_4(value = 4),
     RESERVED_5(value = 5),
     UNIT_LOAD_6(value = 6),
-    COMPONENT_7(value = 7);
+    COMPONENT_7(value = 7),
+    UNKNOWN;
 
     companion object {
-        fun findByValue(value: Int): SGTINFilterValueEnum {
+        fun findByValue(value: Int?): SGTINFilterValueEnum {
             val values = entries.associateBy(SGTINFilterValueEnum::value)
-            return values[value] ?: ALL_OTHERS_0
+            return values[value] ?: UNKNOWN
         }
     }
 }

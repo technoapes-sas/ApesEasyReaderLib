@@ -6,5 +6,6 @@ enum class SettingsEnum {
     CHANGE_REAL_INVENTORY,
     CHANGE_SESSION_CONTROL,
     CHANGE_READER_MODE,
-    DEFAULT;
+    DEFAULT,
+    UNKNOWN;
 }

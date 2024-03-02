@@ -5,8 +5,8 @@ import com.apes.capuchin.rfidcorelib.enums.SessionControlEnum
 import com.apes.capuchin.rfidcorelib.enums.SettingsEnum
 
 data class EasyReaderSettings(
-    val lastSettingChanged: SettingsEnum? = null,
-    val antennaPower: AntennaPowerLevelsEnum? = null,
-    val antennaSound: Int? = null,
-    val sessionControl: SessionControlEnum? = null
+    var lastSettingChanged: SettingsEnum? = null,
+    var antennaPower: AntennaPowerLevelsEnum? = null,
+    var antennaSound: Int? = null,
+    var sessionControl: SessionControlEnum? = null
 )

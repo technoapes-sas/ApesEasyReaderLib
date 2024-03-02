@@ -1,14 +1,15 @@
 [versions]
 agp = "8.2.2"
 org-jetbrains-kotlin-android = "1.9.0"
-core-ktx = "1.9.0"
+core-ktx = "1.12.0"
 junit = "4.13.2"
 androidx-test-ext-junit = "1.1.5"
 espresso-core = "3.5.1"
 appcompat = "1.6.1"
 material = "1.11.0"
 constraintlayout = "2.1.4"
-org-jetbrains-kotlin-jvm = "1.9.0"
+org-jetbrains-kotlin-jvm = "1.9.21"
+coroutines = "1.8.0"
 
 [libraries]
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
@@ -18,6 +19,9 @@ espresso-core = { group = "androidx.test.espresso", name = "espresso-core", vers
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+coroutine-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+coroutine-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+coroutine-flow = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-flow", version.ref = "coroutines" }
 
 [plugins]
 com-android-application = { id = "com.android.application", version.ref = "agp" }
