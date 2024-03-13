@@ -52,7 +52,7 @@ class StepsGRAI : ChoiceStep, AssetTypeStep, SerialStep, TagSizeStep,
         return this
     }
 
-    override fun withRFIDTag(rfidTag: String?): BuildStep {
+    override fun withEPCTag(rfidTag: String?): BuildStep {
         this.rfidTag = rfidTag
         return this
     }

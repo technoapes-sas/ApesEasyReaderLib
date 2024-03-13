@@ -5,12 +5,14 @@ plugins {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_7
-    targetCompatibility = JavaVersion.VERSION_1_7
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 dependencies {
-
+    //implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.arr", "*.jar"))))
+    //api(files("libs/API3_LIB-release-2.0.2.110.aar"))
+    implementation("com.zebra:rfid-android:2.0.2.110")
+    implementation(libs.androidx.support.v4)
     implementation(libs.coroutine.core)
-    implementation(libs.coroutine.flow)
 }

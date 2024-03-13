@@ -2,8 +2,7 @@ package com.apes.capuchin.rfidcorelib.readers
 
 import com.apes.capuchin.rfidcorelib.EasyReader
 
-class ZebraReader : EasyReader() {
-
+class ChainwayReader : EasyReader() {
     override fun connectReader() {
         TODO("Not yet implemented")
     }
@@ -30,7 +29,6 @@ class ZebraReader : EasyReader() {
 
     override fun getSessionControl() {
         TODO("Not yet implemented")
-
     }
 
     override fun setAntennaSound() {

@@ -146,7 +146,7 @@ class ParseSGTIN(steps: StepsSGTIN) {
                 }
             }
         }
-        tableItem = sgtinPartitionTableList.getPartitionByL(prefixLength.value) ?: TableItem()
+        tableItem = sgtinPartitionTableList.getPartitionByL((prefixLength.value ?: 0)) ?: TableItem()
     }
 
     private fun parse() {
@@ -188,16 +188,16 @@ class ParseSGTIN(steps: StepsSGTIN) {
             itemReference,
             serial
         )
-        sgtin.epcRawURI = String.format("urn:epc:raw:%s.x%s", tagSize.value + remainder, outputHex)
+        sgtin.epcRawURI = String.format("urn:epc:raw:%s.x%s", (tagSize.value ?: 0) + remainder, outputHex)
         sgtin.binary = outputBin
         sgtin.rfidTag = outputHex
     }
 
     private fun getBinary(): String {
-        remainder = (ceil(tagSize.value / 16.0) * 16).toInt() - tagSize.value
+        remainder = (ceil((tagSize.value ?: 0) / 16.0) * 16).toInt() - (tagSize.value ?: 0)
         return StringBuilder().apply {
             append(tagSize.getHeader().decToBin(8))
-            append(filterValue.value.decToBin(3))
+            append((filterValue.value ?: 0).decToBin(3))
             append(tableItem.partitionValue?.decToBin(3))
             append(companyPrefix.toInt().decToBin(tableItem.m ?: 0))
             append("${extensionDigit.value}$itemReference".toInt().decToBin(tableItem.n ?: 0))
@@ -207,6 +207,8 @@ class ParseSGTIN(steps: StepsSGTIN) {
 
                 SGTINTagSizeEnum.BITS_96 ->
                     append(serial.decToBin(tagSize.getSerialBitCount() + remainder))
+
+                else -> Unit
             }
         }.toString()
     }
@@ -247,6 +249,8 @@ class ParseSGTIN(steps: StepsSGTIN) {
                     }
                 }
             }
+
+            else -> Unit
         }
     }
 

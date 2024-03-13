@@ -1,6 +1,7 @@
 [versions]
-agp = "8.2.2"
-org-jetbrains-kotlin-android = "1.9.0"
+agp = "8.3.0"
+legacy-support-v4 = "1.0.0"
+org-jetbrains-kotlin-android = "1.9.22"
 core-ktx = "1.12.0"
 junit = "4.13.2"
 androidx-test-ext-junit = "1.1.5"
@@ -8,11 +9,12 @@ espresso-core = "3.5.1"
 appcompat = "1.6.1"
 material = "1.11.0"
 constraintlayout = "2.1.4"
-org-jetbrains-kotlin-jvm = "1.9.21"
+org-jetbrains-kotlin-jvm = "1.9.22"
 coroutines = "1.8.0"
 
 [libraries]
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
+androidx-support-v4 = { module = "androidx.legacy:legacy-support-v4", version.ref = "legacy-support-v4" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-test-ext-junit" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso-core" }

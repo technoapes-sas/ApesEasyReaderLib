@@ -163,7 +163,7 @@ class ParseGRAI(steps: StepsGRAI) {
         )
         grai.epcRawURI = String.format(
             "urn:epc:raw:%s.x%s",
-            tagSize.value + (remainder ?: 0),
+            (tagSize.value ?: 0) + (remainder ?: 0),
             outputHex
         )
         grai.binary = outputBin
@@ -171,10 +171,10 @@ class ParseGRAI(steps: StepsGRAI) {
     }
 
     private fun getBinary(): String {
-        remainder = (ceil(tagSize.value / 16.0) * 16).toInt() - tagSize.value
+        remainder = (ceil((tagSize.value ?: 0) / 16.0) * 16).toInt() - (tagSize.value ?: 0)
         return StringBuilder().apply {
             append(tagSize.getHeader().decToBin(8))
-            append(filterValue.value.decToBin(3))
+            append((filterValue.value ?: 0).decToBin(3))
             append(tableItem?.partitionValue?.decToBin(3))
             append(companyPrefix.toInt().decToBin(tableItem?.m ?: 0))
             append(assetType.toInt().decToBin(tableItem?.n ?: 0))

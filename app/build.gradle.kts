@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.apes.capuchin.capuchinrfidlib"
-    compileSdk = 34
+    compileSdk = 33
 
     defaultConfig {
         applicationId = "com.apes.capuchin.capuchinrfidlib"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 33
         versionCode = 1
         versionName = "1.0"
 
@@ -28,13 +28,19 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
     }
 }
+
+/*val defaultConfiguration = configurations.maybeCreate("default")
+
+artifacts {
+    add(defaultConfiguration.name, file("API3_LIB-release-2.0.2.110.aar"))
+}*/
 
 dependencies {
 

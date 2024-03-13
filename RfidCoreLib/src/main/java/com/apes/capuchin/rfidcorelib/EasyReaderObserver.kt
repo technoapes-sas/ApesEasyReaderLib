@@ -2,36 +2,103 @@ package com.apes.capuchin.rfidcorelib
 
 import com.apes.capuchin.rfidcorelib.enums.AntennaPowerLevelsEnum
 import com.apes.capuchin.rfidcorelib.enums.SessionControlEnum
+import com.apes.capuchin.rfidcorelib.enums.SettingsEnum
 import com.apes.capuchin.rfidcorelib.models.EasyReaderInventory
+import com.apes.capuchin.rfidcorelib.models.EasyReaderSettings
 import com.apes.capuchin.rfidcorelib.models.EasyResponse
+import com.apes.capuchin.rfidcorelib.models.HighReading
 import com.apes.capuchin.rfidcorelib.models.LocateTag
-import sun.jvm.hotspot.utilities.Observable
-import sun.jvm.hotspot.utilities.Observer
+import com.apes.capuchin.rfidcorelib.models.StartStopReading
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
-class EasyReaderObserver : Observer {
+class EasyReaderObserver {
 
-    override fun update(observable: Observable?, args: Any?) {
+    private val _onReaderConnected = MutableSharedFlow<Boolean>()
+    val onReaderConnected = _onReaderConnected.asSharedFlow()
 
+    private val _onReaderConnectionFailed = MutableSharedFlow<EasyResponse>()
+    val onReaderConnectionFailed = _onReaderConnectionFailed.asSharedFlow()
+
+    private val _onReaderError = MutableSharedFlow<EasyResponse>()
+    val onReaderError = _onReaderError.asSharedFlow()
+
+    private val _onItemsRead = MutableSharedFlow<EasyReaderInventory>()
+    val onItemsRead = _onItemsRead.asSharedFlow()
+
+    private val _onAntennaPowerChanged = MutableSharedFlow<AntennaPowerLevelsEnum>()
+    val onAntennaPowerChanged = _onAntennaPowerChanged.asSharedFlow()
+
+    private val _onAntennaSoundChanged = MutableSharedFlow<Int>()
+    val onAntennaSoundChanged = _onAntennaSoundChanged.asSharedFlow()
+
+    private val _onSessionControlChanged = MutableSharedFlow<SessionControlEnum>()
+    val onSessionControlChanged = _onSessionControlChanged.asSharedFlow()
+
+    private val _onLocateTag = MutableSharedFlow<LocateTag>()
+    val onLocateTag = _onLocateTag.asSharedFlow()
+
+    private val _onStartReading = MutableSharedFlow<StartStopReading>()
+    val onStartReading = _onStartReading.asSharedFlow()
+
+    suspend fun update(arg: Any?) {
+        when (arg) {
+            is EasyResponse -> handleEasyResponse(arg)
+            is HighReading -> handleHighReading(arg)
+            is EasyReaderInventory -> handleEasyReaderInventory(arg)
+            is EasyReaderSettings -> handleEasyReaderSettings(arg)
+            is LocateTag -> handleLocateTag(arg)
+            is StartStopReading -> handleStartStopReading(arg)
+        }
     }
 
-    fun onSessionControlChanged(session: SessionControlEnum?) = Unit
+    private suspend fun handleEasyResponse(arg: EasyResponse?) {
+        requireNotNull(arg)
+        when (arg.success) {
+            true -> when (arg.code) {
+                CONNECTION_SUCCEEDED -> _onReaderConnected.emit(true)
+                CONNECTION_CLOSE -> _onReaderConnected.emit(false)
+            }
 
-    fun onReaderConnected() = Unit
+            else -> when (arg.code) {
+                CONNECTION_FAILED -> _onReaderConnectionFailed.emit(arg)
+                else -> _onReaderError.emit(arg)
+            }
+        }
+    }
 
-    fun onReaderDisconnected() = Unit
+    private suspend fun handleHighReading(arg: HighReading?) {
+        requireNotNull(arg)
+        arg.highReading?.let {
+            _onItemsRead.emit(EasyReaderInventory(itemsRead = mutableSetOf(it)))
+        }
+    }
 
-    fun onError(easyResponse: EasyResponse?) = Unit
+    private suspend fun handleEasyReaderInventory(arg: EasyReaderInventory?) {
+        requireNotNull(arg)
+        _onItemsRead.emit(arg)
+    }
 
-    fun onItemsRead(easyReaderInventory: EasyReaderInventory?) = Unit
+    private suspend fun handleEasyReaderSettings(arg: EasyReaderSettings?) {
+        requireNotNull(arg)
+        when (arg.lastSettingChanged) {
+            SettingsEnum.CHANGE_ANTENNA_POWER ->
+                arg.antennaPower?.let { _onAntennaPowerChanged.emit(it) }
+            SettingsEnum.CHANGE_ANTENNA_SOUND ->
+                arg.antennaSound?.let { _onAntennaSoundChanged.emit(it) }
+            SettingsEnum.CHANGE_SESSION_CONTROL ->
+                arg.sessionControl?.let { _onSessionControlChanged.emit(it) }
+            else -> Unit
+        }
+    }
 
-    fun onAntennaPowerChanged(antennaPower: AntennaPowerLevelsEnum?) = Unit
+    private suspend fun handleLocateTag(arg: LocateTag?) {
+        requireNotNull(arg)
+        _onLocateTag.emit(arg)
+    }
 
-    fun onAntennaSoundChanged(level: Int) = Unit
-
-    fun onConnectionFailed(easyResponse: EasyResponse?) = Unit
-
-    fun onLocateTag(locateTag: LocateTag?) = Unit
-
-    fun onStartReading(isRunning: Boolean) = Unit
-
+    private suspend fun handleStartStopReading(arg: StartStopReading?) {
+        requireNotNull(arg)
+        _onStartReading.emit(arg)
+    }
 }

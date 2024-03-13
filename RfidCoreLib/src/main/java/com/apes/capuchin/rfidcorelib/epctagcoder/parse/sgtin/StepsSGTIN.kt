@@ -67,7 +67,7 @@ class StepsSGTIN : ChoiceStep, ExtensionDigitStep, ItemReferenceStep, SerialStep
         return this
     }
 
-    override fun withRFIDTag(rfidTag: String?): BuildStep {
+    override fun withEPCTag(rfidTag: String?): BuildStep {
         this.rfidTag = rfidTag
         return this
     }
