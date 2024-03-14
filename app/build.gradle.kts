@@ -1,4 +1,4 @@
-@Suppress("DSL_SCOPE_VIOLATION") // TODO: Remove once KTIJ-19369 is fixed
+//@Suppress("DSL_SCOPE_VIOLATION") // TODO: Remove once KTIJ-19369 is fixed
 plugins {
     alias(libs.plugins.com.android.application)
     alias(libs.plugins.org.jetbrains.kotlin.android)
@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.apes.capuchin.capuchinrfidlib"
-    compileSdk = 33
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.apes.capuchin.capuchinrfidlib"
         minSdk = 26
-        targetSdk = 33
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -27,23 +27,23 @@ android {
             )
         }
     }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+
+    buildFeatures {
+        buildConfig = false
     }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "1.8"
     }
 }
 
-/*val defaultConfiguration = configurations.maybeCreate("default")
-
-artifacts {
-    add(defaultConfiguration.name, file("API3_LIB-release-2.0.2.110.aar"))
-}*/
-
 dependencies {
-
+    implementation(project(":RfidCoreLib"))
     implementation(libs.core.ktx)
     implementation(libs.appcompat)
     implementation(libs.material)
