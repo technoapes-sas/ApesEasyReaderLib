@@ -67,9 +67,10 @@ abstract class EasyReader {
 
     abstract fun intiRead()
     abstract fun stopRead()
+    abstract fun initReader()
     abstract fun connectReader()
     abstract fun disconnectReader()
-    abstract fun isReaderConnected()
+    abstract fun isReaderConnected(): Boolean
     abstract fun setSessionControl()
     abstract fun getSessionControl()
     abstract fun setAntennaSound()

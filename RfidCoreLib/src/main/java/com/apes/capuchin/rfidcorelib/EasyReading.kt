@@ -1,5 +1,6 @@
 package com.apes.capuchin.rfidcorelib
 
+import android.content.Context
 import com.apes.capuchin.rfidcorelib.enums.CoderEnum
 import com.apes.capuchin.rfidcorelib.enums.ReadModeEnum
 import com.apes.capuchin.rfidcorelib.enums.ReadTypeEnum
@@ -30,16 +31,15 @@ class EasyReading private constructor(
         fun companyPrefixes(companyPrefixes: List<String>) = apply { this.companyPrefixes = companyPrefixes }
         fun readType(readType: ReadTypeEnum) = apply { this.readType = readType }
 
-        fun build(): EasyReading {
-            detectAndConnect()
+        fun build(context: Context): EasyReading {
+            detectAndConnect(context)
             return EasyReading(easyReader!!, coder, readMode, readType, companyPrefixes)
         }
 
-        private fun detectAndConnect() {
-            easyReader = ZebraReader()
+        private fun detectAndConnect(context: Context) {
             try {
                 when (deviceModel) {
-                    TC20, MC33 -> ZebraReader()
+                    TC20, MC33 -> ZebraReader(context)
                     CHAINWAY_C72 -> ChainwayReader()
                     else -> Unit
                 }
@@ -54,11 +54,11 @@ class EasyReading private constructor(
             try {
                 easyReader?.let { reader ->
                     reader.apply {
-                        connectReader()
                         coderEnum = coder
                         readModeEnum = readMode
                         readTypeEnum = readType
                         prefixes = companyPrefixes.orEmpty()
+                        initReader()
                     }
                 } ?: run { onErrorConnect() }
             } catch (e: Exception) {

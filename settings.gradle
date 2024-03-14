@@ -1,3 +1,7 @@
 include ':app'
 include ':RfidCoreLib'
 include ':RfidCoreLib:ZebraApi3'
+include ':RfidCoreLib:ZebraApi3Cmn'
+include ':RfidCoreLib:ZebraApi3Interface'
+include ':RfidCoreLib:ZebraApi3Transport'
+include ':RfidCoreLib:ZebraApi3ZiotcTransport'
