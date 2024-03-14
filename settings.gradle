@@ -1,0 +1,3 @@
+include ':app'
+include ':RfidCoreLib'
+include ':RfidCoreLib:ZebraApi3'
