@@ -39,6 +39,7 @@ dependencies {
 
     api project(":RfidCoreLib:ZebraApi3")
     api project(":RfidCoreLib:ZebraApi3Cmn")
+    api project(":RfidCoreLib:ZebraApi3BarcodeScannerLibrary")
     //api project(":RfidCoreLib:ZebraApi3Interface")
     //api project(":RfidCoreLib:ZebraApi3Transport")
     //api project(":RfidCoreLib:ZebraApi3ZiotcTransport")

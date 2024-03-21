@@ -1,6 +1,7 @@
 package com.apes.capuchin.rfidcorelib
 
 import com.apes.capuchin.rfidcorelib.enums.AntennaPowerLevelsEnum
+import com.apes.capuchin.rfidcorelib.enums.BeeperLevelsEnum
 import com.apes.capuchin.rfidcorelib.enums.CoderEnum
 import com.apes.capuchin.rfidcorelib.enums.ReadModeEnum
 import com.apes.capuchin.rfidcorelib.enums.ReadTypeEnum
@@ -71,12 +72,12 @@ abstract class EasyReader {
     abstract fun connectReader()
     abstract fun disconnectReader()
     abstract fun isReaderConnected(): Boolean
-    abstract fun setSessionControl()
-    abstract fun getSessionControl()
-    abstract fun setAntennaSound()
-    abstract fun getAntennaSound()
-    abstract fun setAntennaPower()
-    abstract fun getAntennaPower()
+    abstract fun setSessionControl(sessionControlEnum: SessionControlEnum)
+    abstract fun getSessionControl(): SessionControlEnum
+    abstract fun setAntennaSound(beeperLevelsEnum: BeeperLevelsEnum)
+    abstract fun getAntennaSound(): BeeperLevelsEnum
+    abstract fun setAntennaPower(antennaPowerLevelsEnum: AntennaPowerLevelsEnum)
+    abstract fun getAntennaPower(): AntennaPowerLevelsEnum
 
     fun notifyObservers(arg: Any?) {
         CoroutineScope(Dispatchers.IO).launch { observer.update(arg) }
@@ -185,11 +186,11 @@ abstract class EasyReader {
         searchTags.clear()
     }
 
-    private fun notifySettingsChange(
-        lastSettings: SettingsEnum,
-        power: AntennaPowerLevelsEnum,
-        beeperLevel: Int,
-        session: SessionControlEnum
+    protected fun notifySettingsChange(
+        lastSettings: SettingsEnum? = null,
+        power: AntennaPowerLevelsEnum? = null,
+        beeperLevel: Int? = null,
+        session: SessionControlEnum? = null
     ) {
         easyReaderSettings?.let { settings ->
             settings.lastSettingChanged = lastSettings

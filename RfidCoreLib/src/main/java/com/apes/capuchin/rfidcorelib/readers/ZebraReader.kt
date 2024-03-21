@@ -1,8 +1,15 @@
 package com.apes.capuchin.rfidcorelib.readers
 
 import android.content.Context
+import android.util.Log
 import com.apes.capuchin.rfidcorelib.EMPTY_STRING
 import com.apes.capuchin.rfidcorelib.EasyReader
+import com.apes.capuchin.rfidcorelib.enums.AntennaPowerLevelsEnum
+import com.apes.capuchin.rfidcorelib.enums.BeeperLevelsEnum
+import com.apes.capuchin.rfidcorelib.enums.ReaderModeEnum
+import com.apes.capuchin.rfidcorelib.enums.SessionControlEnum
+import com.apes.capuchin.rfidcorelib.enums.SettingsEnum
+import com.apes.capuchin.rfidcorelib.models.StartStopReading
 import com.zebra.rfid.api3.ENUM_TRANSPORT
 import com.zebra.rfid.api3.ENUM_TRIGGER_MODE
 import com.zebra.rfid.api3.HANDHELD_TRIGGER_EVENT_TYPE
@@ -22,6 +29,11 @@ import com.zebra.rfid.api3.START_TRIGGER_TYPE
 import com.zebra.rfid.api3.STATUS_EVENT_TYPE
 import com.zebra.rfid.api3.STOP_TRIGGER_TYPE
 import com.zebra.rfid.api3.TriggerInfo
+import com.zebra.scannercontrol.DCSSDKDefs
+import com.zebra.scannercontrol.DCSScannerInfo
+import com.zebra.scannercontrol.FirmwareUpdateEvent
+import com.zebra.scannercontrol.IDcsSdkApiDelegate
+import com.zebra.scannercontrol.SDKHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -29,20 +41,25 @@ import kotlinx.coroutines.launch
 
 class ZebraReader(
     private val context: Context
-) : EasyReader(), RFIDReaderEventHandler {
+) : EasyReader(), RFIDReaderEventHandler, IDcsSdkApiDelegate {
 
+    //region variable
     private var readerName: String? = null
 
     private var readers: Readers? = null
     private var reader: RFIDReader? = null
     private var readerDevice: ReaderDevice? = null
 
-    private var MAX_POWER: Int = 270
+    private var sdkHandler: SDKHandler? = null
+    private val scannerList by lazy { mutableListOf<DCSScannerInfo>() }
+    private var scannerId: Int = 0
 
     private var eventHandler = object : RfidEventsListener {
         override fun eventReadNotify(events: RfidReadEvents?) {
             val myTags = reader?.Actions?.getReadTags(100).orEmpty()
-            TODO("Definir la lógica para devolver tags leídos")
+            myTags.forEach {
+                notifyItemRead(epc = it.tagID , rssi = it.peakRSSI.toInt())
+            }
         }
 
         override fun eventStatusNotify(events: RfidStatusEvents?) {
@@ -50,32 +67,32 @@ class ZebraReader(
             val statusEvent = events.StatusEventData.statusEventType
             when (statusEvent) {
                 STATUS_EVENT_TYPE.HANDHELD_TRIGGER_EVENT -> {
-                    val handheldEvent = events.StatusEventData.HandheldTriggerEventData.handheldEvent
+                    val handheldEvent =
+                        events.StatusEventData.HandheldTriggerEventData.handheldEvent
                     when (handheldEvent) {
-                        HANDHELD_TRIGGER_EVENT_TYPE.HANDHELD_TRIGGER_PRESSED -> {
+                        HANDHELD_TRIGGER_EVENT_TYPE.HANDHELD_TRIGGER_PRESSED ->
                             CoroutineScope(Dispatchers.IO).launch {
-                                performInventory()
+                                intiRead()
+                                notifyObservers(StartStopReading(true))
                             }
-                        }
 
-                        HANDHELD_TRIGGER_EVENT_TYPE.HANDHELD_TRIGGER_RELEASED -> {
+                        HANDHELD_TRIGGER_EVENT_TYPE.HANDHELD_TRIGGER_RELEASED ->
                             CoroutineScope(Dispatchers.IO).launch {
-                                stopInventory()
+                                stopRead()
+                                notifyObservers(StartStopReading(false))
                             }
-                        }
                     }
                 }
 
-                STATUS_EVENT_TYPE.DISCONNECTION_EVENT -> {
-                    disconnectReader()
-                }
+                STATUS_EVENT_TYPE.DISCONNECTION_EVENT -> disconnectReader()
             }
         }
     }
 
     private var availableRFIDReaderList: List<ReaderDevice> = emptyList()
+    //endregion
 
-    //region
+    //region override parent methods
     @Synchronized
     override fun connectReader() {
         if (!isReaderConnected()) {
@@ -83,57 +100,188 @@ class ZebraReader(
         }
     }
 
+    @Synchronized
     override fun disconnectReader() {
-        TODO("Not yet implemented")
+        CoroutineScope(Dispatchers.IO).launch {
+            reader?.let {
+                try {
+                    it.Events.removeEventsListener(eventHandler)
+                    it.disconnect()
+                } catch (e: InvalidUsageException) {
+                    e.printStackTrace()
+                } catch (e: OperationFailureException) {
+                    e.printStackTrace()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            reader = null
+        }
+        TODO("Disconnect barcode scanner")
     }
 
     override fun isReaderConnected(): Boolean = reader?.isConnected ?: false
 
+    @Synchronized
     override fun intiRead() {
-        TODO("Not yet implemented")
+        try {
+            when (readerModeEnum) {
+                ReaderModeEnum.RFID_MODE -> reader?.Actions?.Inventory?.perform()
+                ReaderModeEnum.BARCODE_MODE -> scanCode()
+            }
+        } catch (e: InvalidUsageException) {
+            e.printStackTrace()
+        } catch (e: OperationFailureException) {
+            e.printStackTrace()
+        }
     }
 
+
+    @Synchronized
     override fun stopRead() {
-        TODO("Not yet implemented")
+        try {
+            reader?.Actions?.Inventory?.stop()
+        } catch (e: InvalidUsageException) {
+            e.printStackTrace()
+        } catch (e: OperationFailureException) {
+            e.printStackTrace()
+        }
     }
 
     override fun initReader() {
         readers?.let { connectReader() } ?: run { createInstanceTask() }
     }
 
-    override fun setSessionControl() {
-        TODO("Not yet implemented")
+    override fun setSessionControl(sessionControlEnum: SessionControlEnum) {
+        reader?.let {
+            val sessionValue = when (sessionControlEnum) {
+                SessionControlEnum.S1 -> SESSION.SESSION_S1
+                SessionControlEnum.S2 -> SESSION.SESSION_S2
+                SessionControlEnum.S3 -> SESSION.SESSION_S3
+                else -> SESSION.SESSION_S0
+            }
+            val config = it.Config.Antennas.getSingulationControl(1).apply {
+                session = sessionValue
+                Action.inventoryState = INVENTORY_STATE.INVENTORY_STATE_A
+                Action.slFlag = SL_FLAG.SL_ALL
+            }
+            it.Config.Antennas.setSingulationControl(1, config)
+            notifySettingsChange(
+                lastSettings = SettingsEnum.CHANGE_SESSION_CONTROL,
+                session = sessionControlEnum
+            )
+        }
     }
 
-    override fun getSessionControl() {
-        TODO("Not yet implemented")
+    override fun getSessionControl(): SessionControlEnum {
+        var sessionValue: SessionControlEnum? = null
+        reader?.let {
+            val session = it.Config.Antennas.getSingulationControl(1).session
+            sessionValue = when (session) {
+                SESSION.SESSION_S1 -> SessionControlEnum.S1
+                SESSION.SESSION_S2 -> SessionControlEnum.S2
+                SESSION.SESSION_S3 -> SessionControlEnum.S3
+                else -> SessionControlEnum.S0
+            }
+        }
+        return sessionValue ?: SessionControlEnum.UNKNOWN
     }
 
-    override fun setAntennaSound() {
-        TODO("Not yet implemented")
+    override fun setAntennaSound(beeperLevelsEnum: BeeperLevelsEnum) = Unit
+
+    override fun getAntennaSound(): BeeperLevelsEnum = BeeperLevelsEnum.UNKNOWN
+
+    override fun setAntennaPower(antennaPowerLevelsEnum: AntennaPowerLevelsEnum) {
+        reader?.let {
+            val config = it.Config.Antennas.getAntennaRfConfig(1).apply {
+                tari = 0
+                transmitPowerIndex = when (antennaPowerLevelsEnum) {
+                    AntennaPowerLevelsEnum.MAX -> 270
+                    AntennaPowerLevelsEnum.MEDIUM -> 100
+                    else -> 33
+                }
+                setrfModeTableIndex(0)
+            }
+            it.Config.Antennas.setAntennaRfConfig(1, config)
+            notifySettingsChange(
+                lastSettings = SettingsEnum.CHANGE_ANTENNA_POWER,
+                power = antennaPowerLevelsEnum
+            )
+        }
     }
 
-    override fun getAntennaSound() {
-        TODO("Not yet implemented")
-    }
-
-    override fun setAntennaPower() {
-        TODO("Not yet implemented")
-    }
-
-    override fun getAntennaPower() {
-        TODO("Not yet implemented")
+    override fun getAntennaPower(): AntennaPowerLevelsEnum {
+        var antennaValue: AntennaPowerLevelsEnum? = null
+        reader?.let {
+            val power = it.Config.Antennas.getAntennaRfConfig(1).transmitPowerIndex
+            antennaValue = when (power) {
+                270 -> AntennaPowerLevelsEnum.MAX
+                100 -> AntennaPowerLevelsEnum.MEDIUM
+                else -> AntennaPowerLevelsEnum.MIN
+            }
+        }
+        return antennaValue ?: AntennaPowerLevelsEnum.UNKNOWN
     }
     //endregion
 
-    override fun RFIDReaderAppeared(p0: ReaderDevice?) {
-        TODO("Not yet implemented")
+    //region appeared events observer
+    override fun RFIDReaderAppeared(devide: ReaderDevice?) {
+        connectReader()
     }
 
-    override fun RFIDReaderDisappeared(p0: ReaderDevice?) {
-        TODO("Not yet implemented")
+    override fun RFIDReaderDisappeared(device: ReaderDevice?) {
+        if (device?.name.orEmpty() == reader?.hostName.orEmpty()) {
+            disconnectReader()
+        }
+    }
+    //endregion
+
+    //region barcode events observe
+    override fun dcssdkEventScannerAppeared(p0: DCSScannerInfo?) = Unit
+
+    override fun dcssdkEventScannerDisappeared(p0: Int) = Unit
+
+    override fun dcssdkEventCommunicationSessionEstablished(p0: DCSScannerInfo?) = Unit
+
+    override fun dcssdkEventCommunicationSessionTerminated(p0: Int) = Unit
+
+    override fun dcssdkEventBarcode(barcodeData: ByteArray?, barcodeType: Int, fromScannerID: Int) {
+        barcodeData?.let {
+            val response = String(it)
+            TODO("enviar el valor del scanner a la UI")
+        }
     }
 
+    override fun dcssdkEventImage(p0: ByteArray?, p1: Int) = Unit
+
+    override fun dcssdkEventVideo(p0: ByteArray?, p1: Int) = Unit
+
+    override fun dcssdkEventBinaryData(p0: ByteArray?, p1: Int) = Unit
+
+    override fun dcssdkEventFirmwareUpdate(p0: FirmwareUpdateEvent?) = Unit
+
+    override fun dcssdkEventAuxScannerAppeared(p0: DCSScannerInfo?, p1: DCSScannerInfo?) = Unit
+    //endregion
+
+    //region dispose reader
+    @Synchronized
+    private fun dispose() {
+        disconnectReader()
+        try {
+            if (reader != null) {
+                reader = null
+            }
+            if (readers != null) {
+                readers?.Dispose()
+                readers = null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+    //endregion
+
+    //region connect reader
     private fun createInstanceTask() {
         CoroutineScope(Dispatchers.IO).launch {
             var exception: InvalidUsageException? = null
@@ -156,10 +304,11 @@ class ZebraReader(
     private fun connectionTask() {
         CoroutineScope(Dispatchers.IO).launch {
             getAvailableReader()
-            when {
+            val result = when {
                 reader != null -> connect()
                 else -> "Failed to find or connect reader"
             }
+            println(result)
         }
     }
 
@@ -199,6 +348,7 @@ class ZebraReader(
                         else -> EMPTY_STRING
                     }
                 }
+
                 else -> EMPTY_STRING
             }
         } catch (e: InvalidUsageException) {
@@ -209,7 +359,9 @@ class ZebraReader(
             "Connection failed ${e.vendorMessage} ${e.results}"
         }
     }
+    //endregion
 
+    //region configure reader
     private fun configureReader() {
         if (isReaderConnected()) {
             val triggerInfo = TriggerInfo().apply {
@@ -226,18 +378,8 @@ class ZebraReader(
                 reader?.Config?.startTrigger = triggerInfo.StartTrigger
                 reader?.Config?.stopTrigger = triggerInfo.StopTrigger
 
-                MAX_POWER = (reader?.ReaderCapabilities?.transmitPowerLevelValues?.size ?: 0) - 1
-                val config = reader?.Config?.Antennas?.getAntennaRfConfig(1)
-                config?.transmitPowerIndex = MAX_POWER
-                config?.setrfModeTableIndex(0)
-                config?.tari = 0
-                reader?.Config?.Antennas?.setAntennaRfConfig(1, config)
-
-                val sessionControl = reader?.Config?.Antennas?.getSingulationControl(1)
-                sessionControl?.session = SESSION.SESSION_S0
-                sessionControl?.Action?.inventoryState = INVENTORY_STATE.INVENTORY_STATE_A
-                sessionControl?.Action?.slFlag = SL_FLAG.SL_ALL
-                reader?.Config?.Antennas?.setSingulationControl(1, sessionControl)
+                setAntennaPower(AntennaPowerLevelsEnum.MAX)
+                setSessionControl(SessionControlEnum.S0)
 
                 reader?.Actions?.PreFilters?.deleteAll()
             } catch (e: InvalidUsageException) {
@@ -249,28 +391,72 @@ class ZebraReader(
     }
 
     private fun setupScannerSDK() {
+        sdkHandler?.let {
+            val availableScanners: List<DCSScannerInfo> = it.dcssdkGetAvailableScannersList()
+            scannerList.clear()
+            when {
+                availableScanners.isNotEmpty() -> {
+                    availableScanners.forEach { scanner ->
+                        scannerList.add(scanner)
+                    }
+                }
 
+                else -> Log.d("", "Available scanners null")
+            }
+        } ?: run {
+            sdkHandler = SDKHandler(context)
+            sdkHandler?.dcssdkSetOperationalMode(DCSSDKDefs.DCSSDK_MODE.DCSSDK_OPMODE_USB_CDC)
+            sdkHandler?.dcssdkSetOperationalMode(DCSSDKDefs.DCSSDK_MODE.DCSSDK_OPMODE_BT_LE)
+            sdkHandler?.dcssdkSetOperationalMode(DCSSDKDefs.DCSSDK_MODE.DCSSDK_OPMODE_BT_NORMAL)
+
+            sdkHandler?.dcssdkSetDelegate(this)
+
+            val mask = 0
+            mask or DCSSDKDefs.DCSSDK_EVENT.DCSSDK_EVENT_SCANNER_APPEARANCE.value or DCSSDKDefs.DCSSDK_EVENT.DCSSDK_EVENT_SCANNER_DISAPPEARANCE.value
+            mask or DCSSDKDefs.DCSSDK_EVENT.DCSSDK_EVENT_BARCODE.value or DCSSDKDefs.DCSSDK_EVENT.DCSSDK_EVENT_SESSION_ESTABLISHMENT.value or DCSSDKDefs.DCSSDK_EVENT.DCSSDK_EVENT_SESSION_TERMINATION.value
+
+            sdkHandler?.dcssdkSubsribeForEvents(mask)
+        }
+        reader?.let {
+            scannerList.forEach { device ->
+                if (device.scannerName.contains(it.hostName)) {
+                    try {
+                        scannerId = device.scannerID
+                        sdkHandler?.dcssdkEstablishCommunicationSession(scannerId)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        }
     }
+    //endregion
 
-    @Synchronized
-    private fun performInventory() {
-        try {
-            reader?.Actions?.Inventory?.perform()
-        } catch (e: InvalidUsageException) {
-            e.printStackTrace()
-        } catch (e: OperationFailureException) {
-            e.printStackTrace()
+    private fun scanCode() {
+        val inXml = "<inArgs><scannerID>$scannerId</scannerID></inArgs>"
+        CoroutineScope(Dispatchers.IO).launch {
+            executeCommand(
+                inXML = inXml,
+                scannerID = scannerId
+            )
         }
     }
 
-    @Synchronized
-    private fun stopInventory() {
-        try {
-            reader?.Actions?.Inventory?.stop()
-        } catch (e: InvalidUsageException) {
-            e.printStackTrace()
-        } catch (e: OperationFailureException) {
-            e.printStackTrace()
+    private fun executeCommand(
+        opcode: DCSSDKDefs.DCSSDK_COMMAND_OPCODE = DCSSDKDefs.DCSSDK_COMMAND_OPCODE.DCSSDK_DEVICE_PULL_TRIGGER,
+        inXML: String,
+        outXML: StringBuilder? = null,
+        scannerID: Int
+    ): Boolean {
+        sdkHandler?.let { handler ->
+            val result = handler.dcssdkExecuteCommandOpCodeInXMLForScanner(opcode, inXML, outXML, scannerID)
+            Log.i(TAG, "execute command returned $result")
+            return result == DCSSDKDefs.DCSSDK_RESULT.DCSSDK_RESULT_SUCCESS
         }
+        return false
+    }
+
+    companion object {
+        val TAG: String = ZebraReader::class.java.simpleName
     }
 }

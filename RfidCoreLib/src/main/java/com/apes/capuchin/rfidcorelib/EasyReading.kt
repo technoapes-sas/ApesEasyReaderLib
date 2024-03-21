@@ -30,7 +30,6 @@ class EasyReading private constructor(
         fun readMode(readMode: ReadModeEnum) = apply { this.readMode = readMode }
         fun companyPrefixes(companyPrefixes: List<String>) = apply { this.companyPrefixes = companyPrefixes }
         fun readType(readType: ReadTypeEnum) = apply { this.readType = readType }
-
         fun build(context: Context): EasyReading {
             detectAndConnect(context)
             return EasyReading(easyReader!!, coder, readMode, readType, companyPrefixes)
