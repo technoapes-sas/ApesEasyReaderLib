@@ -1,84 +1,70 @@
 package com.apes.capuchin.rfidcorelib.epctagcoder.util
 
 import java.math.BigInteger
-import kotlin.math.floor
-import kotlin.math.log10
 
 object Converter {
 
-    private fun lPadZero(value: Int, fill: Int): String {
+    private fun lPadZero(value: Int, fill: Int): String = buildString {
         val isNegative = value < 0
-        val positiveValue = if (isNegative) -value else value
 
-        val length =
-            if (positiveValue == 0) 1 else floor(log10(positiveValue.toDouble())).toInt() + 1
-
-        val stringBuilder = StringBuilder()
         if (isNegative) {
-            stringBuilder.append('-')
+            append('-')
         }
 
-        for (i in 0 until fill - length) {
-            stringBuilder.append('0')
-        }
-
-        stringBuilder.append(value)
-
-        return stringBuilder.toString()
+        val binaryString = Integer.toBinaryString(value)
+        append(binaryString.padStart(fill, '0'))
     }
 
     fun String.convertBinToBit(fromBit: Int, toBit: Int): String {
         val regex = "(?<=\\G.{${fromBit}})".toRegex()
         val split = this.split(regex)
 
-        val builder = StringBuilder()
-        for (chunk in split) {
-            val intChunk = chunk.toInt(2)
-            builder.append(lPadZero(intChunk, toBit))
+        return buildString {
+            for (chunk in split) {
+                if (chunk.isNotEmpty()) {
+                    val intChunk = chunk.toInt(2)
+                    append(lPadZero(intChunk, toBit))
+                }
+            }
         }
-
-        return builder.toString()
     }
 
     fun String.hexToBin(): String {
         val hexValue = this.uppercase()
-        val binaryBuilder = StringBuilder()
-        for (char in hexValue) {
-            val binaryEquivalent = Integer.toBinaryString(char.digitToInt(16))
-            binaryBuilder.append(
-                String.format("%4s", binaryEquivalent).replace(" ", "0")
-            )
+
+        return buildString {
+            for (char in hexValue) {
+                val binaryEquivalent = Integer.toBinaryString(char.digitToInt(16))
+                append(binaryEquivalent.padStart(4, '0'))
+            }
         }
-        return binaryBuilder.toString()
     }
 
     fun String.binToHex(): String {
-        val hexBuilder = StringBuilder()
-        for (i in this.indices step 4) {
-            val binaryChunk = this.substring(i, i + 4)
-            val decimalValue = Integer.parseInt(binaryChunk, 2)
-            hexBuilder.append(Character.forDigit(decimalValue, 16))
-        }
-        return hexBuilder.toString().uppercase()
+        return this.chunked(4)
+            .joinToString("") {
+                Character.forDigit(Integer.parseInt(it, 2), 16).toString()
+            }
+            .uppercase()
     }
 
     fun String.stringToBin(bits: Int): String {
-        val builder = StringBuilder()
-        for (char in this) {
-            val binString = Integer.toBinaryString(char.digitToInt()).padStart(bits, '0')
-            builder.append(binString)
+        val value =  this.toInt()
+        return buildString {
+            val binaryString = Integer.toBinaryString(value)
+            append(binaryString.padStart(bits, '0'))
         }
-        return builder.toString()
     }
 
     fun String.binToString(): String {
-        val sb = StringBuilder()
-        for (i in this.indices step 8) {
-            val binaryChunk = this.substring(i, i + 8)
-            val byteValue = Integer.parseInt(binaryChunk, 2)
-            sb.append(byteValue)
-        }
-        return sb.toString().trim()
+        val value = this
+        return buildString {
+            for (i in value.indices step 8) {
+                val binaryChunk = value.substring(i, i + 8)
+                val byteValue = Integer.parseInt(binaryChunk, 2)
+                append(byteValue.toString())
+            }
+        }.trim()
     }
 
     fun Int.decToBin(): String {
@@ -111,15 +97,16 @@ object Converter {
     }
 
     fun String.fill(size: Int): String {
-        val builder = StringBuilder(this)
-        repeat(size - this.length) { builder.append('0') }
-        return builder.toString()
+        return buildString {
+            append(this@fill)
+            repeat(size - this@fill.length) { append('0') }
+        }
     }
 
     fun String.strZero(length: Int): String {
-        return StringBuilder().apply {
-            repeat(length - this.length) { append('0') }
-            append(this)
-        }.toString()
+        return buildString {
+            repeat(length - this@strZero.length) { append('0') }
+            append(this@strZero)
+        }
     }
 }

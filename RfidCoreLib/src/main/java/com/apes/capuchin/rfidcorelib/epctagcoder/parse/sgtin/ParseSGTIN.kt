@@ -39,6 +39,18 @@ class ParseSGTIN(steps: StepsSGTIN) {
 
     private val sgtin: SGTIN = SGTIN()
 
+    companion object {
+        const val EPC_TAG_URI_PATTERN = "(urn:epc:tag:sgtin-)(96|198):([0-7])\\.(\\d+)\\.([0-8])(\\d+)\\.(\\w+)"
+        const val EPC_PURE_IDENTITY_URI_PATTERN = "(urn:epc:id:sgtin):(\\d+)\\.([0-8])(\\d+)\\.(\\w+)"
+        const val EPC_SCHEME = "sgtin"
+        const val APPLICATION_IDENTIFIER = "AI 414 + AI 254"
+        const val EPC_PURE_IDENTITY_URI_FORMAT = "urn:epc:id:sgtin:%s.%s%s.%s"
+        const val EPC_TAG_URI_FORMAT = "urn:epc:tag:sgtin-%s:%s.%s.%s%s.%s"
+        const val EPC_RAW_URI_FORMAT = "urn:epc:raw:%s.x%s"
+
+        fun builder(): ChoiceStep = StepsSGTIN()
+    }
+
     init {
         parse()
     }
@@ -49,6 +61,10 @@ class ParseSGTIN(steps: StepsSGTIN) {
         val headerBin = inputBin.substring(0, 8)
         val filterBin = inputBin.substring(8, 11)
         val partitionBin = inputBin.substring(11, 14)
+
+        tableItem = sgtinPartitionTableList.getPartitionByValue(
+            partitionBin.binToDec().toInt()
+        ) ?: TableItem()
 
         val filterDec = filterBin.toLong(2).toString()
         val companyPrefixBin = inputBin.substring(14, 14 + (tableItem.m ?: 0))
@@ -67,9 +83,6 @@ class ParseSGTIN(steps: StepsSGTIN) {
         tagSize = SGTINTagSizeEnum.findByValue(
             SGTINHeaderEnum.findByValue(headerBin).getTagSize()
         )
-        tableItem = sgtinPartitionTableList.getPartitionByValue(
-            partitionBin.binToDec().toInt()
-        ) ?: TableItem()
         itemReference = itemReferenceWithExtensionDec.substring(1)
         serial = when (tagSize.getSerialBitCount()) {
             140 -> {
@@ -86,24 +99,27 @@ class ParseSGTIN(steps: StepsSGTIN) {
     }
 
     private fun handleParseWithoutRfidTag(sgtinPartitionTableList: SGTINPartitionTableList) {
+        tableItem = sgtinPartitionTableList.getPartitionByL((prefixLength.value ?: 0)) ?: TableItem()
         when {
             companyPrefix.isEmpty() -> {
                 when {
                     epcTagURI.isNotEmpty() -> {
                         val pattern =
-                            Pattern.compile("(urn:epc:tag:sgtin-)(96|198):([0-7])\\.(\\d+)\\.([0-8])(\\d+)\\.(\\w+)")
+                            Pattern.compile(EPC_TAG_URI_PATTERN)
                         val matcher = pattern.matcher(epcTagURI)
                         when {
                             matcher.matches() -> {
-                                tagSize = SGTINTagSizeEnum.findByValue(matcher.group(2).toInt())
+                                tagSize = SGTINTagSizeEnum
+                                    .findByValue(matcher.group(2).orEmpty().toInt())
                                 filterValue = SGTINFilterValueEnum
-                                    .findByValue(matcher.group(3).toInt())
-                                companyPrefix = matcher.group(4)
-                                prefixLength = PrefixLengthEnum.findByCode(matcher.group(4).length)
+                                    .findByValue(matcher.group(3).orEmpty().toInt())
+                                companyPrefix = matcher.group(4).orEmpty()
+                                prefixLength = PrefixLengthEnum
+                                    .findByCode(matcher.group(4).orEmpty().length)
                                 extensionDigit = SGTINExtensionDigitEnum
-                                    .findByValue(matcher.group(5).toInt())
-                                itemReference = matcher.group(6)
-                                serial = matcher.group(7)
+                                    .findByValue(matcher.group(5).orEmpty().toInt())
+                                itemReference = matcher.group(6).orEmpty()
+                                serial = matcher.group(7).orEmpty()
                             }
 
                             else -> throw IllegalArgumentException("EPC Tag URI is invalid")
@@ -112,16 +128,18 @@ class ParseSGTIN(steps: StepsSGTIN) {
 
                     epcPureIdentityURI.isNotEmpty() -> {
                         val pattern =
-                            Pattern.compile("(urn:epc:id:sgtin):(\\d+)\\.([0-8])(\\d+)\\.(\\w+)")
+                            Pattern.compile(EPC_PURE_IDENTITY_URI_PATTERN)
                         val matcher = pattern.matcher(epcPureIdentityURI)
                         when {
                             matcher.matches() -> {
-                                companyPrefix = matcher.group(2)
-                                prefixLength = PrefixLengthEnum.findByCode(matcher.group(2).length)
+                                companyPrefix = matcher.group(2).orEmpty()
+                                prefixLength = PrefixLengthEnum
+                                    .findByCode(matcher.group(2).orEmpty().length)
                                 extensionDigit =
-                                    SGTINExtensionDigitEnum.findByValue(matcher.group(3).toInt())
-                                itemReference = matcher.group(4)
-                                serial = matcher.group(5)
+                                    SGTINExtensionDigitEnum
+                                        .findByValue(matcher.group(3).orEmpty().toInt())
+                                itemReference = matcher.group(4).orEmpty()
+                                serial = matcher.group(5).orEmpty()
                             }
 
                             else -> throw IllegalArgumentException("EPC Pure Identity is invalid")
@@ -146,51 +164,52 @@ class ParseSGTIN(steps: StepsSGTIN) {
                 }
             }
         }
-        tableItem = sgtinPartitionTableList.getPartitionByL((prefixLength.value ?: 0)) ?: TableItem()
     }
 
     private fun parse() {
-
         val sgtinPartitionTableList = SGTINPartitionTableList()
-
         when {
             rfidTag.isEmpty() -> handleParseWithoutRfidTag(sgtinPartitionTableList)
             else -> handleParseWithRfidTag(sgtinPartitionTableList)
         }
-
         val outputBin = getBinary()
         val outputHex = outputBin.binToHex()
-
-        sgtin.epcScheme = "sgtin"
-        sgtin.applicationIdentifier = "AI 414 + AI 254"
-        sgtin.tagSize = tagSize.value.toString()
-        sgtin.filterValue = filterValue.value.toString()
-        sgtin.partitionValue = tableItem.partitionValue?.toString().orEmpty()
-        sgtin.prefixLength = prefixLength.value.toString()
-        sgtin.companyPrefix = companyPrefix
-        sgtin.itemReference = itemReference
-        sgtin.extensionDigit = extensionDigit.value.toString()
-        sgtin.serial = serial
-        sgtin.checkDigit = getCheckDigit().toString()
-        sgtin.epcPureIdentityURI = String.format(
-            "urn:epc:id:sgtin:%s.%s%s.%s",
-            companyPrefix,
-            extensionDigit.value,
-            itemReference,
-            serial
-        )
-        sgtin.epcTagURI = String.format(
-            "urn:epc:tag:sgtin-%s:%s.%s.%s%s.%s",
-            tagSize.value,
-            filterValue.value,
-            companyPrefix,
-            extensionDigit.value,
-            itemReference,
-            serial
-        )
-        sgtin.epcRawURI = String.format("urn:epc:raw:%s.x%s", (tagSize.value ?: 0) + remainder, outputHex)
-        sgtin.binary = outputBin
-        sgtin.rfidTag = outputHex
+        sgtin.apply {
+            epcScheme = EPC_SCHEME
+            applicationIdentifier = APPLICATION_IDENTIFIER
+            tagSize = this@ParseSGTIN.tagSize.value.toString()
+            filterValue = this@ParseSGTIN.filterValue.value.toString()
+            partitionValue = this@ParseSGTIN.tableItem.partitionValue?.toString().orEmpty()
+            prefixLength = this@ParseSGTIN.prefixLength.value.toString()
+            companyPrefix = this@ParseSGTIN.companyPrefix
+            itemReference = this@ParseSGTIN.itemReference
+            extensionDigit = this@ParseSGTIN.extensionDigit.value.toString()
+            serial = this@ParseSGTIN.serial
+            checkDigit = getCheckDigit().toString()
+            epcPureIdentityURI = String.format(
+                EPC_PURE_IDENTITY_URI_FORMAT,
+                this@ParseSGTIN.companyPrefix,
+                this@ParseSGTIN.extensionDigit.value,
+                this@ParseSGTIN.itemReference,
+                this@ParseSGTIN.serial
+            )
+            epcTagURI = String.format(
+                EPC_TAG_URI_FORMAT,
+                this@ParseSGTIN.tagSize.value,
+                this@ParseSGTIN.filterValue.value,
+                this@ParseSGTIN.companyPrefix,
+                this@ParseSGTIN.extensionDigit.value,
+                this@ParseSGTIN.itemReference,
+                this@ParseSGTIN.serial
+            )
+            epcRawURI = String.format(
+                EPC_RAW_URI_FORMAT,
+                (this@ParseSGTIN.tagSize.value ?: 0) + this@ParseSGTIN.remainder,
+                outputHex
+            )
+            binary = outputBin
+            rfidTag = outputHex
+        }
     }
 
     private fun getBinary(): String {
@@ -268,8 +287,4 @@ class ParseSGTIN(steps: StepsSGTIN) {
     fun getSGTIN(): SGTIN = sgtin
 
     fun getRfidTag(): String = getBinary().binToHex()
-
-    companion object {
-        fun Builder(): ChoiceStep = StepsSGTIN()
-    }
 }

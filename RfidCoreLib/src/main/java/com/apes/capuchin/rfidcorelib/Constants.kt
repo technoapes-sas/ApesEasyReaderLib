@@ -12,3 +12,6 @@ const val MC33 = "MC3300x"
 const val CONNECTION_SUCCEEDED: Byte = 0x5A
 const val CONNECTION_CLOSE: Byte = 0x5B
 const val CONNECTION_FAILED: Byte = 0x5C
+
+const val COMMAND_SUCCESS: Byte = 0x10
+const val COMMAND_FAIL: Byte = 0x11

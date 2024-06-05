@@ -1,5 +1,7 @@
 package com.apes.capuchin.rfidcorelib.epctagcoder.result
 
+import com.google.gson.Gson
+
 class SGTIN : BaseReading() {
 
     override var epcScheme: String? = null
@@ -15,31 +17,13 @@ class SGTIN : BaseReading() {
     override var binary: String? = null
     override var rfidTag: String? = null
     override var rssi: Int? = null
-    
+
     var extensionDigit: String? = null
     var itemReference: String? = null
     var serial: String? = null
     var checkDigit: String? = null
 
     override fun toString(): String {
-        val json = StringBuilder().apply {
-            append(String.format("{ \"epcScheme\": \"%s\"", epcScheme))
-            append(String.format(", \"applicationIdentifier\": \"%s\"", applicationIdentifier))
-            append(String.format(", \"tagSize\": \"%s\"", tagSize))
-            append(String.format(", \"filterValue\": \"%s\"", filterValue))
-            append(String.format(", \"partitionValue\": \"%s\"", partitionValue))
-            append(String.format(", \"prefixLength\": \"%s\"", prefixLength))
-            append(String.format(", \"companyPrefix\": \"%s\"", companyPrefix))
-            append(String.format(", \"extensionDigit\": \"%s\"", extensionDigit))
-            append(String.format(", \"itemReference\": \"%s\"", itemReference))
-            append(String.format(", \"serial\": \"%s\"", serial))
-            append(String.format(", \"checkDigit\": \"%s\"", checkDigit))
-            append(String.format(", \"epcPureIdentityURI\": \"%s\"", epcPureIdentityURI))
-            append(String.format(", \"epcTagURI\": \"%s\"", epcTagURI))
-            append(String.format(", \"epcRawURI\": \"%s\"", epcRawURI))
-            append(String.format(", \"binary\": \"%s\"", binary))
-            append(String.format(", \"rfidTag\": \"%s\"", rfidTag)).append(" }")
-        }
-        return json.toString()
+        return Gson().toJson(this)
     }
 }

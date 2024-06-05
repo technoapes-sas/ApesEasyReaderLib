@@ -38,22 +38,41 @@ android {
 dependencies {
 
     api project(":RfidCoreLib:ZebraApi3")
+    api project(":RfidCoreLib:ZebraApi3ASCII")
+    api project(":RfidCoreLib:ZebraApi3LLRP")
     api project(":RfidCoreLib:ZebraApi3Cmn")
+    api project(":RfidCoreLib:ZebraApi3Transport")
+    api project(":RfidCoreLib:ZebraApi3Interface")
+    api project(":RfidCoreLib:ZebraApi3Ziotc")
+    api project(":RfidCoreLib:ZebraApi3ZiotcTransport")
     api project(":RfidCoreLib:ZebraApi3BarcodeScannerLibrary")
-    //api project(":RfidCoreLib:ZebraApi3Interface")
-    //api project(":RfidCoreLib:ZebraApi3Transport")
-    //api project(":RfidCoreLib:ZebraApi3ZiotcTransport")
 
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'androidx.core:core-ktx:1.12.0'
-    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
+    implementation libs.appcompat
+    implementation libs.core.ktx
+    implementation libs.androidx.support.v4
 
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0'
+    implementation libs.coroutine.core
+    implementation libs.coroutine.android
 
-    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation libs.gson
+    implementation libs.androidx.junit.ktx
 
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    testImplementation libs.junit
+    androidTestImplementation libs.androidx.test.ext.junit
+    androidTestImplementation libs.espresso.core
+
+    androidTestImplementation "androidx.test:core:1.5.0"
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+    testImplementation 'org.assertj:assertj-core:3.18.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+
+    //implementation 'org.slf4j:slf4j-api:1.7.36'
+    //implementation 'org.slf4j:slf4j-simple:1.7.36'
+
+    // Mockito para simular objetos dependientes
+    testImplementation 'org.mockito:mockito-core:4.0.0'
+
+    // MockK para simular objetos dependientes (alternativa a Mockito)
+    testImplementation 'io.mockk:mockk:1.13.4'
 }

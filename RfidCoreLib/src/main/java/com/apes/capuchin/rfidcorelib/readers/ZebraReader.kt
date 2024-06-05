@@ -2,6 +2,8 @@ package com.apes.capuchin.rfidcorelib.readers
 
 import android.content.Context
 import android.util.Log
+import com.apes.capuchin.rfidcorelib.CONNECTION_CLOSE
+import com.apes.capuchin.rfidcorelib.CONNECTION_SUCCEEDED
 import com.apes.capuchin.rfidcorelib.EMPTY_STRING
 import com.apes.capuchin.rfidcorelib.EasyReader
 import com.apes.capuchin.rfidcorelib.enums.AntennaPowerLevelsEnum
@@ -9,7 +11,9 @@ import com.apes.capuchin.rfidcorelib.enums.BeeperLevelsEnum
 import com.apes.capuchin.rfidcorelib.enums.ReaderModeEnum
 import com.apes.capuchin.rfidcorelib.enums.SessionControlEnum
 import com.apes.capuchin.rfidcorelib.enums.SettingsEnum
+import com.apes.capuchin.rfidcorelib.models.EasyResponse
 import com.apes.capuchin.rfidcorelib.models.StartStopReading
+import com.zebra.rfid.api3.BEEPER_VOLUME
 import com.zebra.rfid.api3.ENUM_TRANSPORT
 import com.zebra.rfid.api3.ENUM_TRIGGER_MODE
 import com.zebra.rfid.api3.HANDHELD_TRIGGER_EVENT_TYPE
@@ -56,9 +60,11 @@ class ZebraReader(
 
     private var eventHandler = object : RfidEventsListener {
         override fun eventReadNotify(events: RfidReadEvents?) {
-            val myTags = reader?.Actions?.getReadTags(100).orEmpty()
-            myTags.forEach {
-                notifyItemRead(epc = it.tagID , rssi = it.peakRSSI.toInt())
+            CoroutineScope(Dispatchers.IO).launch {
+                val myTags = reader?.Actions?.getReadTags(100).orEmpty()
+                myTags.forEach {
+                    notifyItemRead(epc = it.tagID, rssi = it.peakRSSI.toInt())
+                }
             }
         }
 
@@ -72,7 +78,7 @@ class ZebraReader(
                     when (handheldEvent) {
                         HANDHELD_TRIGGER_EVENT_TYPE.HANDHELD_TRIGGER_PRESSED ->
                             CoroutineScope(Dispatchers.IO).launch {
-                                intiRead()
+                                initRead()
                                 notifyObservers(StartStopReading(true))
                             }
 
@@ -103,27 +109,34 @@ class ZebraReader(
     @Synchronized
     override fun disconnectReader() {
         CoroutineScope(Dispatchers.IO).launch {
-            reader?.let {
-                try {
+            try {
+                reader?.let {
                     it.Events.removeEventsListener(eventHandler)
                     it.disconnect()
-                } catch (e: InvalidUsageException) {
-                    e.printStackTrace()
-                } catch (e: OperationFailureException) {
-                    e.printStackTrace()
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
+                reader = null
+                sdkHandler = null
+                notifyObservers(
+                    EasyResponse(
+                        success = true,
+                        message = "Reader disconnected",
+                        code = CONNECTION_CLOSE
+                    )
+                )
+            } catch (e: InvalidUsageException) {
+                e.printStackTrace()
+            } catch (e: OperationFailureException) {
+                e.printStackTrace()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-            reader = null
         }
-        TODO("Disconnect barcode scanner")
     }
 
     override fun isReaderConnected(): Boolean = reader?.isConnected ?: false
 
     @Synchronized
-    override fun intiRead() {
+    override fun initRead() {
         try {
             when (readerModeEnum) {
                 ReaderModeEnum.RFID_MODE -> reader?.Actions?.Inventory?.perform()
@@ -135,7 +148,6 @@ class ZebraReader(
             e.printStackTrace()
         }
     }
-
 
     @Synchronized
     override fun stopRead() {
@@ -187,9 +199,33 @@ class ZebraReader(
         return sessionValue ?: SessionControlEnum.UNKNOWN
     }
 
-    override fun setAntennaSound(beeperLevelsEnum: BeeperLevelsEnum) = Unit
+    override fun setAntennaSound(beeperLevelsEnum: BeeperLevelsEnum) {
+        reader?.let {
+            it.Config.beeperVolume = when (beeperLevelsEnum) {
+                BeeperLevelsEnum.MAX -> BEEPER_VOLUME.HIGH_BEEP
+                BeeperLevelsEnum.MEDIUM -> BEEPER_VOLUME.MEDIUM_BEEP
+                BeeperLevelsEnum.MIN -> BEEPER_VOLUME.LOW_BEEP
+                else -> BEEPER_VOLUME.QUIET_BEEP
+            }
+            notifySettingsChange(
+                lastSettings = SettingsEnum.CHANGE_ANTENNA_SOUND,
+                beeperLevel = beeperLevelsEnum
+            )
+        }
+    }
 
-    override fun getAntennaSound(): BeeperLevelsEnum = BeeperLevelsEnum.UNKNOWN
+    override fun getAntennaSound(): BeeperLevelsEnum {
+        var beeperLevel: BeeperLevelsEnum? = null
+        reader?.let {
+            beeperLevel = when (it.Config.beeperVolume) {
+                BEEPER_VOLUME.HIGH_BEEP -> BeeperLevelsEnum.MAX
+                BEEPER_VOLUME.MEDIUM_BEEP -> BeeperLevelsEnum.MEDIUM
+                BEEPER_VOLUME.LOW_BEEP -> BeeperLevelsEnum.MIN
+                else -> BeeperLevelsEnum.QUIET
+            }
+        }
+        return beeperLevel ?: BeeperLevelsEnum.UNKNOWN
+    }
 
     override fun setAntennaPower(antennaPowerLevelsEnum: AntennaPowerLevelsEnum) {
         reader?.let {
@@ -248,7 +284,7 @@ class ZebraReader(
     override fun dcssdkEventBarcode(barcodeData: ByteArray?, barcodeType: Int, fromScannerID: Int) {
         barcodeData?.let {
             val response = String(it)
-            TODO("enviar el valor del scanner a la UI")
+            notifyItemRead(epc = response, rssi = 0)
         }
     }
 
@@ -285,15 +321,15 @@ class ZebraReader(
     private fun createInstanceTask() {
         CoroutineScope(Dispatchers.IO).launch {
             var exception: InvalidUsageException? = null
-            readers = Readers(context, ENUM_TRANSPORT.SERVICE_USB)
+            readers = Readers(context, ENUM_TRANSPORT.SERVICE_SERIAL)
             try {
                 availableRFIDReaderList = readers?.GetAvailableRFIDReaderList().orEmpty().toList()
             } catch (e: InvalidUsageException) {
                 exception = e
-                e.printStackTrace()
+                exception.printStackTrace()
             }
-            if (exception != null && availableRFIDReaderList.isEmpty()) {
-                readers?.Dispose()
+            if (exception != null || availableRFIDReaderList.isEmpty()) {
+                dispose()
                 delay(600)
                 readers = Readers(context, ENUM_TRANSPORT.BLUETOOTH)
             }
@@ -344,7 +380,17 @@ class ZebraReader(
                     configureReader()
                     setupScannerSDK()
                     when {
-                        isReaderConnected() -> "Connected: ${reader?.hostName.orEmpty()}"
+                        isReaderConnected() -> {
+                            notifyObservers(
+                                EasyResponse(
+                                    success = true,
+                                    message = "Reader connected",
+                                    code = CONNECTION_SUCCEEDED
+                                )
+                            )
+                            "Connected: ${reader?.hostName.orEmpty()}"
+                        }
+
                         else -> EMPTY_STRING
                     }
                 }
@@ -352,6 +398,9 @@ class ZebraReader(
                 else -> EMPTY_STRING
             }
         } catch (e: InvalidUsageException) {
+            e.printStackTrace()
+            EMPTY_STRING
+        } catch (e: NegativeArraySizeException) {
             e.printStackTrace()
             EMPTY_STRING
         } catch (e: OperationFailureException) {
@@ -432,6 +481,7 @@ class ZebraReader(
     }
     //endregion
 
+    //region open barcode scanner
     private fun scanCode() {
         val inXml = "<inArgs><scannerID>$scannerId</scannerID></inArgs>"
         CoroutineScope(Dispatchers.IO).launch {
@@ -449,12 +499,14 @@ class ZebraReader(
         scannerID: Int
     ): Boolean {
         sdkHandler?.let { handler ->
-            val result = handler.dcssdkExecuteCommandOpCodeInXMLForScanner(opcode, inXML, outXML, scannerID)
+            val result =
+                handler.dcssdkExecuteCommandOpCodeInXMLForScanner(opcode, inXML, outXML, scannerID)
             Log.i(TAG, "execute command returned $result")
             return result == DCSSDKDefs.DCSSDK_RESULT.DCSSDK_RESULT_SUCCESS
         }
         return false
     }
+    //endregion
 
     companion object {
         val TAG: String = ZebraReader::class.java.simpleName

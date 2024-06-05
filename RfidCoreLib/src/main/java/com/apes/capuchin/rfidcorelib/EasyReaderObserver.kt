@@ -1,6 +1,7 @@
 package com.apes.capuchin.rfidcorelib
 
 import com.apes.capuchin.rfidcorelib.enums.AntennaPowerLevelsEnum
+import com.apes.capuchin.rfidcorelib.enums.BeeperLevelsEnum
 import com.apes.capuchin.rfidcorelib.enums.SessionControlEnum
 import com.apes.capuchin.rfidcorelib.enums.SettingsEnum
 import com.apes.capuchin.rfidcorelib.models.EasyReaderInventory
@@ -29,7 +30,7 @@ class EasyReaderObserver {
     private val _onAntennaPowerChanged = MutableSharedFlow<AntennaPowerLevelsEnum>()
     val onAntennaPowerChanged = _onAntennaPowerChanged.asSharedFlow()
 
-    private val _onAntennaSoundChanged = MutableSharedFlow<Int>()
+    private val _onAntennaSoundChanged = MutableSharedFlow<BeeperLevelsEnum>()
     val onAntennaSoundChanged = _onAntennaSoundChanged.asSharedFlow()
 
     private val _onSessionControlChanged = MutableSharedFlow<SessionControlEnum>()

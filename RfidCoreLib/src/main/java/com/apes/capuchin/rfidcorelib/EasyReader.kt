@@ -20,8 +20,6 @@ import com.apes.capuchin.rfidcorelib.models.LocateTag
 import com.apes.capuchin.rfidcorelib.models.StartStopReading
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filter
@@ -32,7 +30,7 @@ import kotlinx.coroutines.launch
 abstract class EasyReader {
 
     private val easyReaderInventory by lazy { MutableStateFlow(EasyReaderInventory()) }
-    private val inventoryFlow by lazy { MutableSharedFlow<Pair<String, Int>>() }
+    private val inventoryFlow by lazy { MutableStateFlow(Pair(first = "", second = 0)) }
 
     private var easyReaderSettings: EasyReaderSettings? = null
 
@@ -41,7 +39,6 @@ abstract class EasyReader {
 
     private var searchTag: String = EMPTY_STRING
     private var epcFound: Boolean = false
-    private var startStop: Boolean = true
 
     private var readerMode: ReaderModeEnum = ReaderModeEnum.RFID_MODE
     private var readMode: ReadModeEnum = ReadModeEnum.NOTIFY_BY_ITEM_READ
@@ -52,21 +49,31 @@ abstract class EasyReader {
 
     var readerModeEnum: ReaderModeEnum
         get() = readerMode
-        set(value) { readerMode = value }
+        set(value) {
+            readerMode = value
+        }
     var readModeEnum: ReadModeEnum
         get() = readMode
-        set(value) { readMode = value }
+        set(value) {
+            readMode = value
+        }
     var readTypeEnum: ReadTypeEnum
         get() = readType
-        set(value) { readType = value }
+        set(value) {
+            readType = value
+        }
     var coderEnum: CoderEnum
         get() = coder
-        set(value) { coder = value }
+        set(value) {
+            coder = value
+        }
     var prefixes: List<String>
         get() = companyPrefixes
-        set(value) { companyPrefixes.addAll(value) }
+        set(value) {
+            companyPrefixes.addAll(value)
+        }
 
-    abstract fun intiRead()
+    abstract fun initRead()
     abstract fun stopRead()
     abstract fun initReader()
     abstract fun connectReader()
@@ -80,34 +87,42 @@ abstract class EasyReader {
     abstract fun getAntennaPower(): AntennaPowerLevelsEnum
 
     fun notifyObservers(arg: Any?) {
-        CoroutineScope(Dispatchers.IO).launch { observer.update(arg) }
         handleReportedArg(arg)
     }
 
     private fun handleReportedArg(arg: Any?) {
-        when {
-            arg is EasyResponse -> {
-                when (arg.code) {
-                    CONNECTION_SUCCEEDED -> addReaderSubscription()
-                    CONNECTION_CLOSE, CONNECTION_FAILED -> removeReaderSubscription()
-                }
-            }
+        CoroutineScope(Dispatchers.IO).launch {
+            observer.update(arg)
+            when {
+                arg is EasyResponse ->
+                    handleEasyResponse(arg)
 
-            arg is StartStopReading && readMode.isNotifyWhenStopped() -> {
-                when {
-                    readType == ReadTypeEnum.INVENTORY && arg.startStop != true ->
-                        notifyObservers(easyReaderInventory.value)
-
-                    readType == ReadTypeEnum.HIGH_READING && arg.startStop != true->
-                        observeInventory()
-                }
+                arg is StartStopReading && readMode.isNotifyWhenStopped() ->
+                    handleStartStopReading(arg)
             }
+        }.runCatching {  }
+    }
+
+    private suspend fun handleEasyResponse(arg: EasyResponse) {
+        when (arg.code) {
+            CONNECTION_SUCCEEDED -> addReaderSubscription()
+            CONNECTION_CLOSE, CONNECTION_FAILED -> removeReaderSubscription()
         }
     }
 
-    private fun addReaderSubscription() {
-        CoroutineScope(Dispatchers.IO).launch {
-            inventoryFlow.map { (epc, rssi) ->
+    private fun handleStartStopReading(arg: StartStopReading) {
+        when {
+            readType == ReadTypeEnum.INVENTORY && arg.startStop != true ->
+                notifyObservers(easyReaderInventory.value)
+
+            readType == ReadTypeEnum.HIGH_READING && arg.startStop != true ->
+                observeInventory()
+        }
+    }
+
+    private suspend fun addReaderSubscription() {
+        inventoryFlow.filter { (epc, rssi) -> epc.isNotEmpty() && rssi != 0 }
+            .map { (epc, rssi) ->
                 when (readType) {
                     ReadTypeEnum.SEARCH_TAG -> LocateTag(search = epc, rssi = rssi.toLong())
                     else -> {
@@ -126,14 +141,14 @@ abstract class EasyReader {
                     else -> continueReading(easyReaderInventory.value)
                 }
             }.catch {
-                throw IllegalArgumentException("An error has occurred while reading.")
-            }.collect { notifyObservers(it) }
-        }
+                it.printStackTrace()
+            }.collect { reading ->
+                notifyObservers(reading)
+            }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     private fun removeReaderSubscription() {
-        inventoryFlow.resetReplayCache()
+        inventoryFlow.update { it.copy(first = "", second = 0) }
     }
 
     private fun observeInventory() {
@@ -150,8 +165,12 @@ abstract class EasyReader {
 
     private fun getBaseReading(epc: String): BaseReading {
         return when (coder) {
-            CoderEnum.SGTIN -> (ParseSGTIN.Builder().withEPCTag(epc).build() as ParseSGTIN).getSGTIN()
-            CoderEnum.GRAI -> (ParseGRAI.Builder().withEPCTag(epc).build() as ParseGRAI).getGRAI()
+            CoderEnum.SGTIN ->
+                (ParseSGTIN.builder().withEPCTag(epc).build() as ParseSGTIN).getSGTIN()
+
+            CoderEnum.GRAI ->
+                (ParseGRAI.Builder().withEPCTag(epc).build() as ParseGRAI).getGRAI()
+
             else -> NONE(epc)
         }
     }
@@ -186,10 +205,10 @@ abstract class EasyReader {
         searchTags.clear()
     }
 
-    protected fun notifySettingsChange(
+    fun notifySettingsChange(
         lastSettings: SettingsEnum? = null,
         power: AntennaPowerLevelsEnum? = null,
-        beeperLevel: Int? = null,
+        beeperLevel: BeeperLevelsEnum? = null,
         session: SessionControlEnum? = null
     ) {
         easyReaderSettings?.let { settings ->
@@ -202,6 +221,6 @@ abstract class EasyReader {
     }
 
     fun notifyItemRead(epc: String, rssi: Int) {
-        inventoryFlow.tryEmit(epc to rssi)
+        inventoryFlow.update { it.copy(first = epc, second = rssi) }
     }
 }

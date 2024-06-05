@@ -5,12 +5,11 @@ import com.apes.capuchin.rfidcorelib.enums.CoderEnum
 import com.apes.capuchin.rfidcorelib.enums.ReadModeEnum
 import com.apes.capuchin.rfidcorelib.enums.ReadTypeEnum
 import com.apes.capuchin.rfidcorelib.models.EasyResponse
-import com.apes.capuchin.rfidcorelib.readers.ChainwayReader
 import com.apes.capuchin.rfidcorelib.readers.ErrorReader
-import com.apes.capuchin.rfidcorelib.readers.ZebraReader
+import com.apes.capuchin.rfidcorelib.readers.zebra.ZebraUhfReader
 
 class EasyReading private constructor(
-    val easyReader: EasyReader,
+    val easyReader: EasyReader?,
     val coder: CoderEnum,
     val readMode: ReadModeEnum,
     val readType: ReadTypeEnum,
@@ -32,16 +31,13 @@ class EasyReading private constructor(
         fun readType(readType: ReadTypeEnum) = apply { this.readType = readType }
         fun build(context: Context): EasyReading {
             detectAndConnect(context)
-            return EasyReading(easyReader!!, coder, readMode, readType, companyPrefixes)
+            return EasyReading(easyReader, coder, readMode, readType, companyPrefixes)
         }
 
         private fun detectAndConnect(context: Context) {
             try {
-                when (deviceModel) {
-                    TC20, MC33 -> ZebraReader(context)
-                    CHAINWAY_C72 -> ChainwayReader()
-                    else -> Unit
-                }
+                easyReader = ZebraUhfReader(context)
+                println("Connecting reader")
                 connectEasyReader()
             } catch (e: Exception) {
                 onErrorConnect()
@@ -67,6 +63,7 @@ class EasyReading private constructor(
         }
 
         private fun onErrorConnect() {
+            println("Error connecting reader.")
             easyReader = ErrorReader()
             easyReader?.notifyObservers(EasyResponse(
                 success = false,

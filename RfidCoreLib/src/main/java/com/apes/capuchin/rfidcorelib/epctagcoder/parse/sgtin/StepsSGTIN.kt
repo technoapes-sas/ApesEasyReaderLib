@@ -32,15 +32,15 @@ class StepsSGTIN : ChoiceStep, ExtensionDigitStep, ItemReferenceStep, SerialStep
     override fun build(): ParseSGTIN = ParseSGTIN(this)
 
     override fun withFilterValue(filterValue: Any?): BuildStep {
-        if (filterValue is SGTINFilterValueEnum) {
-            this.filterValue = filterValue
+        when(filterValue) {
+            is SGTINFilterValueEnum -> this.filterValue = filterValue
         }
         return this
     }
 
     override fun withTagSize(tagSize: Any?): FilterValueStep {
-        if (tagSize is SGTINTagSizeEnum) {
-            this.tagSize = tagSize
+        when(tagSize) {
+            is SGTINTagSizeEnum -> this.tagSize = tagSize
         }
         return this
     }
@@ -56,8 +56,8 @@ class StepsSGTIN : ChoiceStep, ExtensionDigitStep, ItemReferenceStep, SerialStep
     }
 
     override fun withExtensionDigit(extensionDigit: Any?): ItemReferenceStep {
-        if (extensionDigit is SGTINExtensionDigitEnum) {
-            this.extensionDigit = extensionDigit
+        when(extensionDigit) {
+            is SGTINExtensionDigitEnum -> this.extensionDigit = extensionDigit
         }
         return this
     }

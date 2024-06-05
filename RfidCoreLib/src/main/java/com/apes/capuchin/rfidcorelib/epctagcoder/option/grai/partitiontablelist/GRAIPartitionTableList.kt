@@ -22,24 +22,10 @@ class GRAIPartitionTableList(tagSizeEnum: GRAITagSizeEnum) {
     }
 
     fun getPartitionByL(index: Int): TableItem? {
-        var tableItem: TableItem? = null
-        tableItemList.orEmpty().forEach { item ->
-            if (item.l == index) {
-                tableItem = item
-                return@forEach
-            }
-        }
-        return tableItem
+        return tableItemList?.firstOrNull { it.l == index }
     }
 
     fun getPartitionByValue(index: Int): TableItem? {
-        var tableItem: TableItem? = null
-        tableItemList.orEmpty().forEach { item ->
-            if (item.partitionValue == index) {
-                tableItem = item
-                return@forEach
-            }
-        }
-        return tableItem
+        return tableItemList?.firstOrNull { it.partitionValue == index }
     }
 }

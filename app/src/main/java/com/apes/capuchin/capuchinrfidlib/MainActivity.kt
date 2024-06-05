@@ -5,17 +5,18 @@ import android.os.Bundle
 import android.widget.Toast
 import com.apes.capuchin.rfidcorelib.EasyReader
 import com.apes.capuchin.rfidcorelib.EasyReading
+import com.apes.capuchin.rfidcorelib.enums.AntennaPowerLevelsEnum
 import com.apes.capuchin.rfidcorelib.enums.CoderEnum
 import com.apes.capuchin.rfidcorelib.enums.ReadModeEnum
 import com.apes.capuchin.rfidcorelib.enums.ReadTypeEnum
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collect
+import com.apes.capuchin.rfidcorelib.enums.ReaderModeEnum
+import com.apes.capuchin.rfidcorelib.enums.SessionControlEnum
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var easyReader: EasyReader
+    private var easyReader: EasyReader? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,45 +25,98 @@ class MainActivity : AppCompatActivity() {
             .coder(CoderEnum.SGTIN)
             .readMode(ReadModeEnum.NOTIFY_BY_ITEM_READ)
             .readType(ReadTypeEnum.INVENTORY)
-            .companyPrefixes(emptyList())
+            .companyPrefixes(listOf("7705751", "7701749"))
             .build(applicationContext)
 
         easyReader = easyReading.easyReader
         subscribeToObservable()
     }
 
+    private fun configReader() {
+        easyReader?.let {
+            println("Configuring reader")
+            it.readerModeEnum = ReaderModeEnum.RFID_MODE
+            it.readModeEnum = ReadModeEnum.NOTIFY_BY_ITEM_READ
+            it.readTypeEnum = ReadTypeEnum.INVENTORY
+            it.setAntennaPower(AntennaPowerLevelsEnum.MAX)
+            it.setSessionControl(SessionControlEnum.S0)
+        }
+    }
+
     private fun subscribeToObservable() {
-        CoroutineScope(Dispatchers.IO).launch {
-            easyReader.observer.onReaderConnected.collect { onReaderConnected ->
-                val message = when {
-                    onReaderConnected -> "Reader connected"
-                    else -> "Reader connection failed"
+        MainScope().launch {
+            easyReader?.let {
+                it.observer.onReaderConnected.collect { onReaderConnected ->
+                    val message = when {
+                        onReaderConnected -> {
+                            configReader()
+                            "Reader connected"
+                        }
+                        else -> "Reader connection failed"
+                    }
+                    Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
                 }
-                Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
             }
-            easyReader.observer.onReaderConnectionFailed.collect {
-
+        }
+        MainScope().launch {
+            easyReader?.let {
+                it.observer.onReaderConnectionFailed.collect { abc ->
+                    Toast.makeText(applicationContext, abc.message.orEmpty(), Toast.LENGTH_SHORT)
+                        .show()
+                }
             }
-            easyReader.observer.onReaderError.collect {
-
+        }
+        MainScope().launch {
+            easyReader?.let {
+                it.observer.onReaderError.collect { error ->
+                    Toast.makeText(applicationContext, error.message.orEmpty(), Toast.LENGTH_SHORT)
+                        .show()
+                }
             }
-            easyReader.observer.onAntennaPowerChanged.collect {
-
+        }
+        MainScope().launch {
+            easyReader?.let {
+                it.observer.onAntennaPowerChanged.collect { power ->
+                    Toast.makeText(applicationContext, power.name, Toast.LENGTH_SHORT).show()
+                }
             }
-            easyReader.observer.onAntennaSoundChanged.collect {
-
+        }
+        MainScope().launch {
+            easyReader?.let {
+                it.observer.onAntennaSoundChanged.collect { sound ->
+                    Toast.makeText(applicationContext, sound.name, Toast.LENGTH_SHORT).show()
+                }
             }
-            easyReader.observer.onSessionControlChanged.collect {
-
+        }
+        MainScope().launch {
+            easyReader?.let {
+                it.observer.onSessionControlChanged.collect { session ->
+                    Toast.makeText(applicationContext, session.name, Toast.LENGTH_SHORT).show()
+                }
             }
-            easyReader.observer.onStartReading.collect {
-
+        }
+        MainScope().launch {
+            easyReader?.let {
+                it.observer.onStartReading.collect { onStart ->
+                    val message =
+                        if (onStart.startStop == true) "Lectura iniciada" else "Lectura detenida"
+                    Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
+                }
             }
-            easyReader.observer.onItemsRead.collect {
-
+        }
+        MainScope().launch {
+            easyReader?.let {
+                it.observer.onItemsRead.collect { inventory ->
+                    Toast.makeText(applicationContext, "${inventory.itemsRead.size}", Toast.LENGTH_SHORT).show()
+                }
             }
-            easyReader.observer.onLocateTag.collect {
-
+        }
+        MainScope().launch {
+            easyReader?.let {
+                it.observer.onLocateTag.collect { locate ->
+                    Toast.makeText(applicationContext, locate.search.orEmpty(), Toast.LENGTH_SHORT)
+                        .show()
+                }
             }
         }
     }
