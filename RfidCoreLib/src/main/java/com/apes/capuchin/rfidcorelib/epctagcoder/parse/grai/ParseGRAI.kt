@@ -18,18 +18,19 @@ import kotlin.math.ceil
 
 class ParseGRAI(steps: StepsGRAI) {
 
-    private var grai: GRAI
-    private var companyPrefix: String
-    private var tagSize: GRAITagSizeEnum
-    private var filterValue: GRAIFilterValueEnum
-    private var assetType: String
-    private var serial: String
-    private var rfidTag: String
-    private var epcTagURI: String
-    private var epcPureIdentityURI: String
     private var prefixLength: PrefixLengthEnum? = null
     private var tableItem: TableItem? = null
     private var remainder: Int? = null
+
+    var grai: GRAI
+    var companyPrefix: String
+    var tagSize: GRAITagSizeEnum
+    var filterValue: GRAIFilterValueEnum
+    var assetType: String
+    var serial: String
+    var rfidTag: String
+    var epcTagURI: String
+    var epcPureIdentityURI: String
 
     init {
         companyPrefix = steps.companyPrefix.orEmpty()
@@ -44,7 +45,7 @@ class ParseGRAI(steps: StepsGRAI) {
         parse()
     }
 
-    private fun handleParseWithRfidTag(partitionTableList: GRAIPartitionTableList) {
+    fun handleParseWithRfidTag(partitionTableList: GRAIPartitionTableList) {
 
         val inputBin = rfidTag.hexToBin()
         val headerBin = inputBin.substring(0, 8)
@@ -75,7 +76,7 @@ class ParseGRAI(steps: StepsGRAI) {
         prefixLength = PrefixLengthEnum.findByCode(tableItem?.l ?: 0)
     }
 
-    private fun handleParseWithoutRfidTag(partitionTableList: GRAIPartitionTableList) {
+    fun handleParseWithoutRfidTag(partitionTableList: GRAIPartitionTableList) {
         when {
             companyPrefix.isEmpty() -> {
                 when {
@@ -85,13 +86,12 @@ class ParseGRAI(steps: StepsGRAI) {
                         val matcher = pattern.matcher(epcTagURI)
                         when {
                             matcher.matches() -> {
-                                tagSize = GRAITagSizeEnum.findByValue(matcher.group(2).toInt())
-                                filterValue = GRAIFilterValueEnum
-                                    .findByValue(matcher.group(3).toInt())
-                                companyPrefix = matcher.group(4)
-                                prefixLength = PrefixLengthEnum.findByCode(matcher.group(4).length)
-                                assetType = matcher.group(5)
-                                serial = matcher.group(6)
+                                tagSize = GRAITagSizeEnum.findByValue(matcher.group(2)?.toInt())
+                                filterValue = GRAIFilterValueEnum.findByValue(matcher.group(3)?.toInt())
+                                companyPrefix = matcher.group(4).orEmpty()
+                                prefixLength = PrefixLengthEnum.findByCode(matcher.group(4)?.length)
+                                assetType = matcher.group(6).orEmpty()
+                                serial = matcher.group(7).orEmpty()
                             }
 
                             else -> throw IllegalArgumentException("EPC Tag URI is invalid")
@@ -104,10 +104,10 @@ class ParseGRAI(steps: StepsGRAI) {
                         val matcher = pattern.matcher(epcPureIdentityURI)
                         when {
                             matcher.matches() -> {
-                                companyPrefix = matcher.group(2)
-                                prefixLength = PrefixLengthEnum.findByCode(matcher.group(2).length)
-                                assetType = matcher.group(3)
-                                serial = matcher.group(4)
+                                companyPrefix = matcher.group(2).orEmpty()
+                                prefixLength = PrefixLengthEnum.findByCode(matcher.group(2)?.length)
+                                assetType = matcher.group(3).orEmpty()
+                                serial = matcher.group(4).orEmpty()
                             }
 
                             else -> throw IllegalArgumentException("EPC Pure Identity is invalid")
@@ -126,7 +126,7 @@ class ParseGRAI(steps: StepsGRAI) {
         tableItem = partitionTableList.getPartitionByL(prefixLength?.value ?: 6) ?: TableItem()
     }
 
-    private fun parse() {
+    fun parse() {
 
         val partitionTableList = GRAIPartitionTableList(tagSize)
 
@@ -170,7 +170,7 @@ class ParseGRAI(steps: StepsGRAI) {
         grai.rfidTag = outputHex
     }
 
-    private fun getBinary(): String {
+    fun getBinary(): String {
         remainder = (ceil((tagSize.value ?: 0) / 16.0) * 16).toInt() - (tagSize.value ?: 0)
         return StringBuilder().apply {
             append(tagSize.getHeader().decToBin(8))
@@ -182,16 +182,16 @@ class ParseGRAI(steps: StepsGRAI) {
         }.toString()
     }
 
-    private fun validateCompanyPrefix() {
+    fun validateCompanyPrefix() {
         prefixLength
             ?: throw IllegalArgumentException("Company Prefix is invalid. Length not found in the partition table")
     }
 
     fun getGRAI() = grai
 
-    fun getRfidTag() = getBinary().binToHex()
+    fun getRfidHexTag() = getBinary().binToHex()
 
     companion object {
-        fun Builder(): ChoiceStep = StepsGRAI()
+        fun builder(): ChoiceStep = StepsGRAI()
     }
 }

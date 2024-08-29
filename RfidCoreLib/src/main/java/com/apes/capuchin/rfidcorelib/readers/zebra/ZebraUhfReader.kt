@@ -1,8 +1,11 @@
 package com.apes.capuchin.rfidcorelib.readers.zebra
 
 import android.content.Context
-import com.apes.capuchin.rfidcorelib.CONNECTION_CLOSE
-import com.apes.capuchin.rfidcorelib.EasyReader
+import com.apes.capuchin.capuchinrfidlib.lib.R
+import com.apes.capuchin.rfidcorelib.utils.CONNECTION_CLOSE_CODE
+import com.apes.capuchin.rfidcorelib.utils.CONNECTION_SUCCEEDED_CODE
+import com.apes.capuchin.rfidcorelib.readers.EasyReader
+import com.apes.capuchin.rfidcorelib.utils.SUCCESS
 import com.apes.capuchin.rfidcorelib.enums.AntennaPowerLevelsEnum
 import com.apes.capuchin.rfidcorelib.enums.BeeperLevelsEnum
 import com.apes.capuchin.rfidcorelib.enums.ReaderModeEnum
@@ -26,7 +29,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class ZebraUhfReader(
-    context: Context
+    private val context: Context
 ) : EasyReader(), Readers.RFIDReaderEventHandler, IDcsSdkApiDelegate {
 
     var readers: ReadersManager = ReadersManager(context = context)
@@ -57,21 +60,30 @@ class ZebraUhfReader(
         readers.connectReader(null) { reader ->
             this.reader = reader
             configureReader()
+            notifyObservers(EasyResponse(
+                success = SUCCESS,
+                message = context.getString(R.string.reader_connected),
+                code = CONNECTION_SUCCEEDED_CODE
+            ))
         }
     }
 
     override fun disconnectReader() {
         reader?.disconnect()
         reader = null
-        notifyObservers(EasyResponse(true, "Reader disconnected", CONNECTION_CLOSE))
+        notifyObservers(EasyResponse(
+            success = SUCCESS,
+            message = context.getString(R.string.disconnect_reader),
+            code = CONNECTION_CLOSE_CODE
+        ))
     }
 
     override fun isReaderConnected(): Boolean = reader?.isConnected ?: false
 
     override fun initRead() {
-        when (readerModeEnum) {
-            ReaderModeEnum.RFID_MODE -> reader?.Actions?.Inventory?.perform()
+        when (readerMode) {
             ReaderModeEnum.BARCODE_MODE -> scannerManager.scanCode()
+            ReaderModeEnum.RFID_MODE -> reader?.Actions?.Inventory?.perform()
         }
     }
 
@@ -91,7 +103,7 @@ class ZebraUhfReader(
     }
 
     override fun getSessionControl(): SessionControlEnum {
-        return readerConfiguration.getSessionControl(reader) ?: SessionControlEnum.S1
+        return readerConfiguration.getSessionControl(reader) ?: SessionControlEnum.S0
     }
 
     override fun setAntennaSound(beeperLevelsEnum: BeeperLevelsEnum) {

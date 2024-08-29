@@ -1,3 +1,4 @@
+package com.apes.capuchin.rfidcorelib
 
 import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.binToDec
 import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.binToHex

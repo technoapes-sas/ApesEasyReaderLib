@@ -23,15 +23,15 @@ import kotlin.math.ceil
 
 class ParseSGTIN(steps: StepsSGTIN) {
 
-    private var companyPrefix: String = steps.companyPrefix.orEmpty()
-    private var itemReference: String = steps.itemReference.orEmpty()
-    private var serial: String = steps.serial.orEmpty()
+    var companyPrefix: String = steps.companyPrefix.orEmpty()
+    var itemReference: String = steps.itemReference.orEmpty()
+    var serial: String = steps.serial.orEmpty()
     private var rfidTag: String = steps.rfidTag.orEmpty()
     private var epcTagURI: String = steps.epcTagURI.orEmpty()
     private var epcPureIdentityURI: String = steps.epcPureIdentityURI.orEmpty()
     private var remainder: Int = steps.remainder ?: 0
 
-    private var extensionDigit = steps.extensionDigit ?: SGTINExtensionDigitEnum.EXTENSION_0
+    var extensionDigit = steps.extensionDigit ?: SGTINExtensionDigitEnum.EXTENSION_0
     private var prefixLength = steps.prefixLength ?: PrefixLengthEnum.DIGIT_6
     private var tagSize = steps.tagSize ?: SGTINTagSizeEnum.BITS_96
     private var filterValue = steps.filterValue ?: SGTINFilterValueEnum.ALL_OTHERS_0
@@ -55,7 +55,7 @@ class ParseSGTIN(steps: StepsSGTIN) {
         parse()
     }
 
-    private fun handleParseWithRfidTag(sgtinPartitionTableList: SGTINPartitionTableList) {
+    fun handleParseWithRfidTag(sgtinPartitionTableList: SGTINPartitionTableList) {
 
         val inputBin = rfidTag.hexToBin()
         val headerBin = inputBin.substring(0, 8)
@@ -98,7 +98,7 @@ class ParseSGTIN(steps: StepsSGTIN) {
         prefixLength = PrefixLengthEnum.findByCode(tableItem.l ?: 0)
     }
 
-    private fun handleParseWithoutRfidTag(sgtinPartitionTableList: SGTINPartitionTableList) {
+    fun handleParseWithoutRfidTag(sgtinPartitionTableList: SGTINPartitionTableList) {
         tableItem = sgtinPartitionTableList.getPartitionByL((prefixLength.value ?: 0)) ?: TableItem()
         when {
             companyPrefix.isEmpty() -> {
@@ -166,7 +166,7 @@ class ParseSGTIN(steps: StepsSGTIN) {
         }
     }
 
-    private fun parse() {
+    fun parse() {
         val sgtinPartitionTableList = SGTINPartitionTableList()
         when {
             rfidTag.isEmpty() -> handleParseWithoutRfidTag(sgtinPartitionTableList)
@@ -212,7 +212,7 @@ class ParseSGTIN(steps: StepsSGTIN) {
         }
     }
 
-    private fun getBinary(): String {
+    fun getBinary(): String {
         remainder = (ceil((tagSize.value ?: 0) / 16.0) * 16).toInt() - (tagSize.value ?: 0)
         return StringBuilder().apply {
             append(tagSize.getHeader().decToBin(8))
@@ -232,19 +232,23 @@ class ParseSGTIN(steps: StepsSGTIN) {
         }.toString()
     }
 
-    private fun getCheckDigit(): Int {
-        val value = StringBuilder()
-            .append(extensionDigit.value)
-            .append(companyPrefix)
-            .append(itemReference)
-            .toString()
+    fun getCheckDigit(): Int {
+        val value = buildString {
+            append(extensionDigit.value)
+            append(companyPrefix)
+            append(itemReference)
+        }
 
-        return (10 - ((3 * (value.indices.step(2)
-            .sumOf { value[it].digitToInt() }) + (value.indices.step(2).drop(1)
-            .sumOf { value[it].digitToInt() })) % 10)) % 10
+        val sumOdd = value.filterIndexed { index, _ -> index % 2 == 0 }
+            .sumOf { it.digitToInt() }
+
+        val sumEven = value.filterIndexed { index, _ -> index % 2 != 0 }
+            .sumOf { it.digitToInt() }
+
+        return (10 - ((3 * sumOdd + sumEven) % 10)) % 10
     }
 
-    private fun validateSerial() {
+    fun validateSerial() {
         when (val tagSizeEnum = SGTINTagSizeEnum.findByValue(tagSize.value)) {
             SGTINTagSizeEnum.BITS_198 -> when {
                 serial.length > tagSizeEnum.getSerialMaxLength() -> {
@@ -273,7 +277,7 @@ class ParseSGTIN(steps: StepsSGTIN) {
         }
     }
 
-    private fun validateExtensionDigitAndItemReference() {
+    fun validateExtensionDigitAndItemReference() {
         val value = StringBuilder().append(extensionDigit.value).append(itemReference).toString()
         when {
             value.length != tableItem.digits -> {

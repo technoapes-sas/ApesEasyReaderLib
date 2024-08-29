@@ -1,6 +1,5 @@
 package com.apes.capuchin.rfidcorelib.readers
 
-import com.apes.capuchin.rfidcorelib.EasyReader
 import com.apes.capuchin.rfidcorelib.enums.AntennaPowerLevelsEnum
 import com.apes.capuchin.rfidcorelib.enums.BeeperLevelsEnum
 import com.apes.capuchin.rfidcorelib.enums.SessionControlEnum

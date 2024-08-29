@@ -10,10 +10,13 @@ import com.apes.capuchin.rfidcorelib.models.EasyResponse
 import com.apes.capuchin.rfidcorelib.models.HighReading
 import com.apes.capuchin.rfidcorelib.models.LocateTag
 import com.apes.capuchin.rfidcorelib.models.StartStopReading
+import com.apes.capuchin.rfidcorelib.utils.CONNECTION_CLOSE_CODE
+import com.apes.capuchin.rfidcorelib.utils.CONNECTION_FAILED_CODE
+import com.apes.capuchin.rfidcorelib.utils.CONNECTION_SUCCEEDED_CODE
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
-class EasyReaderObserver {
+abstract class EasyReaderObserver {
 
     private val _onReaderConnected = MutableSharedFlow<Boolean>()
     val onReaderConnected = _onReaderConnected.asSharedFlow()
@@ -50,38 +53,35 @@ class EasyReaderObserver {
             is EasyReaderSettings -> handleEasyReaderSettings(arg)
             is LocateTag -> handleLocateTag(arg)
             is StartStopReading -> handleStartStopReading(arg)
+            else -> Unit
         }
     }
 
-    private suspend fun handleEasyResponse(arg: EasyResponse?) {
-        requireNotNull(arg)
+    private suspend fun handleEasyResponse(arg: EasyResponse) {
         when (arg.success) {
             true -> when (arg.code) {
-                CONNECTION_SUCCEEDED -> _onReaderConnected.emit(true)
-                CONNECTION_CLOSE -> _onReaderConnected.emit(false)
+                CONNECTION_SUCCEEDED_CODE -> _onReaderConnected.emit(true)
+                CONNECTION_CLOSE_CODE -> _onReaderConnected.emit(false)
             }
 
             else -> when (arg.code) {
-                CONNECTION_FAILED -> _onReaderConnectionFailed.emit(arg)
+                CONNECTION_FAILED_CODE -> _onReaderConnectionFailed.emit(arg)
                 else -> _onReaderError.emit(arg)
             }
         }
     }
 
-    private suspend fun handleHighReading(arg: HighReading?) {
-        requireNotNull(arg)
+    private suspend fun handleHighReading(arg: HighReading) {
         arg.highReading?.let {
             _onItemsRead.emit(EasyReaderInventory(itemsRead = mutableSetOf(it)))
         }
     }
 
-    private suspend fun handleEasyReaderInventory(arg: EasyReaderInventory?) {
-        requireNotNull(arg)
+    private suspend fun handleEasyReaderInventory(arg: EasyReaderInventory) {
         _onItemsRead.emit(arg)
     }
 
-    private suspend fun handleEasyReaderSettings(arg: EasyReaderSettings?) {
-        requireNotNull(arg)
+    private suspend fun handleEasyReaderSettings(arg: EasyReaderSettings) {
         when (arg.lastSettingChanged) {
             SettingsEnum.CHANGE_ANTENNA_POWER ->
                 arg.antennaPower?.let { _onAntennaPowerChanged.emit(it) }
@@ -93,13 +93,11 @@ class EasyReaderObserver {
         }
     }
 
-    private suspend fun handleLocateTag(arg: LocateTag?) {
-        requireNotNull(arg)
+    private suspend fun handleLocateTag(arg: LocateTag) {
         _onLocateTag.emit(arg)
     }
 
-    private suspend fun handleStartStopReading(arg: StartStopReading?) {
-        requireNotNull(arg)
+    private suspend fun handleStartStopReading(arg: StartStopReading) {
         _onStartReading.emit(arg)
     }
 }

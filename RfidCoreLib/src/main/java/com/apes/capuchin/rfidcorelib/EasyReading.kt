@@ -4,40 +4,43 @@ import android.content.Context
 import com.apes.capuchin.rfidcorelib.enums.CoderEnum
 import com.apes.capuchin.rfidcorelib.enums.ReadModeEnum
 import com.apes.capuchin.rfidcorelib.enums.ReadTypeEnum
+import com.apes.capuchin.rfidcorelib.enums.ReaderModeEnum
 import com.apes.capuchin.rfidcorelib.models.EasyResponse
+import com.apes.capuchin.rfidcorelib.readers.EasyReader
 import com.apes.capuchin.rfidcorelib.readers.ErrorReader
 import com.apes.capuchin.rfidcorelib.readers.zebra.ZebraUhfReader
+import com.apes.capuchin.rfidcorelib.utils.CONNECTION_FAILED_CODE
+import com.apes.capuchin.rfidcorelib.utils.ERROR
 
-class EasyReading private constructor(
-    val easyReader: EasyReader?,
-    val coder: CoderEnum,
-    val readMode: ReadModeEnum,
-    val readType: ReadTypeEnum,
-    val companyPrefixes: List<String>?
-) {
+class EasyReading private constructor(val easyReader: EasyReader?) {
+
     class Builder {
+
+        private lateinit var coder: CoderEnum
+        private lateinit var readerMode: ReaderModeEnum
+        private lateinit var readMode: ReadModeEnum
+        private lateinit var readType: ReadTypeEnum
+        private lateinit var companyPrefixes: List<String>
+
         private var easyReader: EasyReader? = null
-        private var coder: CoderEnum = CoderEnum.NONE
-        private var readMode: ReadModeEnum = ReadModeEnum.NOTIFY_WHEN_READER_STOPPED
-        private var readType: ReadTypeEnum = ReadTypeEnum.INVENTORY
-        private var companyPrefixes: List<String>? = null
 
         private var deviceId: String? = null
         private var deviceModel: String? = null
 
         fun coder(coder: CoderEnum) = apply { this.coder = coder }
         fun readMode(readMode: ReadModeEnum) = apply { this.readMode = readMode }
+        fun readerMode(readerMode: ReaderModeEnum) = apply { this.readerMode = readerMode }
         fun companyPrefixes(companyPrefixes: List<String>) = apply { this.companyPrefixes = companyPrefixes }
         fun readType(readType: ReadTypeEnum) = apply { this.readType = readType }
+
         fun build(context: Context): EasyReading {
             detectAndConnect(context)
-            return EasyReading(easyReader, coder, readMode, readType, companyPrefixes)
+            return EasyReading(easyReader)
         }
 
         private fun detectAndConnect(context: Context) {
             try {
                 easyReader = ZebraUhfReader(context)
-                println("Connecting reader")
                 connectEasyReader()
             } catch (e: Exception) {
                 onErrorConnect()
@@ -48,14 +51,15 @@ class EasyReading private constructor(
         private fun connectEasyReader() {
             try {
                 easyReader?.let { reader ->
-                    reader.apply {
-                        coderEnum = coder
-                        readModeEnum = readMode
-                        readTypeEnum = readType
-                        prefixes = companyPrefixes.orEmpty()
+                    with(reader) {
+                        readerMode = this@Builder.readerMode
+                        coder = this@Builder.coder
+                        readMode = this@Builder.readMode
+                        readType = this@Builder.readType
+                        companyPrefixes.addAll(this@Builder.companyPrefixes)
                         initReader()
                     }
-                } ?: run { onErrorConnect() }
+                } ?: onErrorConnect()
             } catch (e: Exception) {
                 onErrorConnect()
                 e.printStackTrace()
@@ -63,12 +67,11 @@ class EasyReading private constructor(
         }
 
         private fun onErrorConnect() {
-            println("Error connecting reader.")
             easyReader = ErrorReader()
             easyReader?.notifyObservers(EasyResponse(
-                success = false,
+                success = ERROR,
                 message = "El lector no pudo ser conectado.",
-                code = CONNECTION_FAILED
+                code = CONNECTION_FAILED_CODE
             ))
             easyReader = null
         }

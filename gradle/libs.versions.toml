@@ -1,23 +1,37 @@
 [versions]
 agp = "8.3.2"
+assertj-core = "3.18.1"
+core = "1.6.1"
+gradle = "8.3.2"
 gson = "2.10.1"
+junit-jupiter-api = "5.8.2"
 legacy-support-v4 = "1.0.0"
+mockito-core = "4.0.0"
+mockk = "1.13.4"
+navigation-fragment-ktx = "2.7.7"
 org-jetbrains-kotlin-android = "1.9.22"
 core-ktx = "1.13.1"
 junit = "4.13.2"
-androidx-test-ext-junit = "1.1.5"
-espresso-core = "3.5.1"
-mockito = "4.0.0"
-appcompat = "1.6.1"
+androidx-test-ext-junit = "1.2.1"
+espresso-core = "3.6.1"
+appcompat = "1.7.0"
 material = "1.12.0"
 constraintlayout = "2.1.4"
 org-jetbrains-kotlin-jvm = "1.9.22"
 coroutines = "1.8.0"
-junit-ktx = "1.1.5"
+junit-ktx = "1.2.1"
+play-services-location = "21.3.0"
+recyclerview = "1.3.2"
 
 [libraries]
+androidx-core = { module = "androidx.test:core", version.ref = "core" }
+androidx-navigation-fragment-ktx = { module = "androidx.navigation:navigation-fragment-ktx", version.ref = "navigation-fragment-ktx" }
+androidx-navigation-ui-ktx = { module = "androidx.navigation:navigation-ui-ktx", version.ref = "navigation-fragment-ktx" }
+androidx-recyclerview = { module = "androidx.recyclerview:recyclerview", version.ref = "recyclerview" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj-core" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
 androidx-support-v4 = { module = "androidx.legacy:legacy-support-v4", version.ref = "legacy-support-v4" }
+gradle = { module = "com.android.tools.build:gradle", version.ref = "gradle" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -26,11 +40,15 @@ espresso-core = { group = "androidx.test.espresso", name = "espresso-core", vers
 androidx-junit-ktx = { group = "androidx.test.ext", name = "junit-ktx", version.ref = "junit-ktx" }
 
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit-jupiter-api" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter-api" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 coroutine-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 coroutine-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
-coroutine-flow = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-flow", version.ref = "coroutines" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito-core" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
 
 [plugins]
 com-android-application = { id = "com.android.application", version.ref = "agp" }

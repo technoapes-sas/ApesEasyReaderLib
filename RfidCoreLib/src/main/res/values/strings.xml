@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EasyReadingLib</string>
+    <string name="read_flash_error">Read flash error.</string>
+    <string name="tag_read_error">Error occurred when read.</string>
+    <string name="no_tag_error">There is no tag to be operated.</string>
+    <string name="parameter_invalid">Invalid parameter.</string>
+    <string name="parameter_invalid_epc_match_mode">Invalid EPC match mode.</string>
+    <string name="parameter_invalid_frequency_range">Invalid frequency range.</string>
+    <string name="pll_lock_fail">PLL can not lock.</string>
+    <string name="rf_chip_fail_to_response">No response from RF chip.</string>
+    <string name="success_connect">Reader connected.</string>
+    <string name="fail_connect">The reader can not be connected.</string>
+    <string name="disconnect_reader">Reader disconnected.</string>
+    <string name="reader_connected">Reader connected</string>
+    <string name="reader_reloaded">Reader reloaded</string>
+    <string name="reader_connection_failed">Reader connection failed. Check the handheld and try again.</string>
+    <string name="connecting">Connecting…</string>
+    <string name="reader_settings">Reader Settings</string>
+    <string name="command_success">Command succeeded</string>
+    <string name="command_fail">Command Fail</string>
+</resources>
