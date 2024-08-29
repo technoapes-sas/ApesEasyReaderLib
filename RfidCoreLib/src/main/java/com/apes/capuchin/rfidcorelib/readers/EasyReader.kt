@@ -40,7 +40,6 @@ abstract class EasyReader : EasyReaderObserver() {
     private var easyReaderSettings: EasyReaderSettings? = null
 
     val companyPrefixes: MutableList<String> by lazy { mutableListOf() }
-    val searchTags: MutableList<String> by lazy { mutableListOf() }
 
     var searchTag: String = EMPTY_STRING
     private var epcFound: Boolean = false
@@ -63,8 +62,28 @@ abstract class EasyReader : EasyReaderObserver() {
     abstract fun setAntennaPower(antennaPowerLevelsEnum: AntennaPowerLevelsEnum)
     abstract fun getAntennaPower(): AntennaPowerLevelsEnum
 
-    fun notifyObservers(arg: Any?) {
+    protected fun notifyObservers(arg: Any?) {
         handleReportedArg(arg)
+    }
+
+    protected fun notifySettingsChange(
+        lastSettings: SettingsEnum? = null,
+        power: AntennaPowerLevelsEnum? = null,
+        beeperLevel: BeeperLevelsEnum? = null,
+        session: SessionControlEnum? = null
+    ) {
+        easyReaderSettings?.let { settings ->
+            settings.lastSettingChanged = lastSettings
+            settings.antennaPower = power
+            settings.antennaSound = beeperLevel
+            settings.sessionControl = session
+            notifyObservers(settings)
+        }
+        notifyObservers(easyReaderSettings)
+    }
+
+    protected fun notifyItemRead(epc: String, rssi: Int) {
+        inventoryFlow.update { it.copy(first = epc, second = rssi) }
     }
 
     private fun handleReportedArg(arg: Any?) {
@@ -177,30 +196,9 @@ abstract class EasyReader : EasyReaderObserver() {
         easyReaderInventory.update { it.copy(itemsRead = mutableSetOf()) }
     }
 
-    private fun clearSearch() {
+    fun clearSearch() {
         readType = ReadTypeEnum.INVENTORY
         epcFound = false
         searchTag = EMPTY_STRING
-        searchTags.clear()
-    }
-
-    fun notifySettingsChange(
-        lastSettings: SettingsEnum? = null,
-        power: AntennaPowerLevelsEnum? = null,
-        beeperLevel: BeeperLevelsEnum? = null,
-        session: SessionControlEnum? = null
-    ) {
-        easyReaderSettings?.let { settings ->
-            settings.lastSettingChanged = lastSettings
-            settings.antennaPower = power
-            settings.antennaSound = beeperLevel
-            settings.sessionControl = session
-            notifyObservers(settings)
-        }
-        notifyObservers(easyReaderSettings)
-    }
-
-    fun notifyItemRead(epc: String, rssi: Int) {
-        inventoryFlow.update { it.copy(first = epc, second = rssi) }
     }
 }

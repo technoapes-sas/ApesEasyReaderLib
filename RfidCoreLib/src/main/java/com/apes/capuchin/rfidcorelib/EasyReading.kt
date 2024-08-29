@@ -67,12 +67,9 @@ class EasyReading private constructor(val easyReader: EasyReader?) {
         }
 
         private fun onErrorConnect() {
-            easyReader = ErrorReader()
-            easyReader?.notifyObservers(EasyResponse(
-                success = ERROR,
-                message = "El lector no pudo ser conectado.",
-                code = CONNECTION_FAILED_CODE
-            ))
+            easyReader = ErrorReader().apply {
+                initReader()
+            }
             easyReader = null
         }
     }

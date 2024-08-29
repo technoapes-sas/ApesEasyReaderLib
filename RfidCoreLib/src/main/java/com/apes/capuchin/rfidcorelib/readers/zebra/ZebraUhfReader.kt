@@ -8,6 +8,7 @@ import com.apes.capuchin.rfidcorelib.readers.EasyReader
 import com.apes.capuchin.rfidcorelib.utils.SUCCESS
 import com.apes.capuchin.rfidcorelib.enums.AntennaPowerLevelsEnum
 import com.apes.capuchin.rfidcorelib.enums.BeeperLevelsEnum
+import com.apes.capuchin.rfidcorelib.enums.ReadTypeEnum
 import com.apes.capuchin.rfidcorelib.enums.ReaderModeEnum
 import com.apes.capuchin.rfidcorelib.enums.SessionControlEnum
 import com.apes.capuchin.rfidcorelib.enums.SettingsEnum
@@ -83,12 +84,26 @@ class ZebraUhfReader(
     override fun initRead() {
         when (readerMode) {
             ReaderModeEnum.BARCODE_MODE -> scannerManager.scanCode()
-            ReaderModeEnum.RFID_MODE -> reader?.Actions?.Inventory?.perform()
+            ReaderModeEnum.RFID_MODE -> {
+                when (readType) {
+                    ReadTypeEnum.SEARCH_TAG ->
+                        reader?.Actions?.TagLocationing?.Perform(
+                            searchTag,
+                            null,
+                            null
+                        )
+                    else-> reader?.Actions?.Inventory?.perform()
+                }
+            }
         }
     }
 
     override fun stopRead() {
-        reader?.Actions?.Inventory?.stop()
+        when (readType) {
+            ReadTypeEnum.SEARCH_TAG ->
+                reader?.Actions?.TagLocationing?.Stop()
+            else-> reader?.Actions?.Inventory?.stop()
+        }
     }
 
     override fun initReader() {

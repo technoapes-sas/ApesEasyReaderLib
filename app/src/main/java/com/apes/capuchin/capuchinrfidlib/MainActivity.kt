@@ -31,16 +31,15 @@ class MainActivity : AppCompatActivity() {
             .build(applicationContext)
 
         easyReader = easyReading.easyReader
-        easyReader?.coderEnum
         subscribeToObservable()
     }
 
     private fun configReader() {
         easyReader?.let {
             println("Configuring reader")
-            it.readerModeEnum = ReaderModeEnum.RFID_MODE
-            it.readModeEnum = ReadModeEnum.NOTIFY_BY_ITEM_READ
-            it.readTypeEnum = ReadTypeEnum.INVENTORY
+            it.readerMode = ReaderModeEnum.RFID_MODE
+            it.readMode = ReadModeEnum.NOTIFY_BY_ITEM_READ
+            it.readType = ReadTypeEnum.INVENTORY
             it.setAntennaPower(AntennaPowerLevelsEnum.MAX)
             it.setSessionControl(SessionControlEnum.S0)
         }
