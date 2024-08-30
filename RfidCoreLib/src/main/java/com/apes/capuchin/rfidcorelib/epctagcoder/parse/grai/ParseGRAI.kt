@@ -189,8 +189,6 @@ class ParseGRAI(steps: StepsGRAI) {
 
     fun getGRAI() = grai
 
-    fun getRfidHexTag() = getBinary().binToHex()
-
     companion object {
         fun builder(): ChoiceStep = StepsGRAI()
     }

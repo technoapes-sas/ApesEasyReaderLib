@@ -225,10 +225,9 @@ class ChainwayReader(
     }
 
     private fun startLocated() {
-        if (!loopFlag) {
-            val epc = searchTags.firstOrNull() ?: return
-            loopFlag = reader?.startLocation(context, epc, IUHF.Bank_EPC, 32, ::handleLocated)
-                ?: btReader?.startLocation(context, epc, IUHF.Bank_EPC, 32, ::handleLocated)
+        if (!loopFlag && searchTag.isNotEmpty()) {
+            loopFlag = reader?.startLocation(context, searchTag, IUHF.Bank_EPC, 32, ::handleLocated)
+                ?: btReader?.startLocation(context, searchTag, IUHF.Bank_EPC, 32, ::handleLocated)
                         ?: false
             notifyObservers(StartStopReading(loopFlag))
         }

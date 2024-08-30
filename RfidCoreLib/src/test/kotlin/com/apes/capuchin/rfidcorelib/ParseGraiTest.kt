@@ -138,21 +138,4 @@ class ParseGraiTest {
         val grai = parseGRAI.getGRAI()
         assertNotNull(grai)
     }
-
-    @Test
-    fun testGetRfidTag() {
-        val steps = StepsGRAI().apply {
-            companyPrefix = "170034"
-            tagSize = GRAITagSizeEnum.BITS_96
-            filterValue = GRAIFilterValueEnum.ALL_OTHERS_0
-            itemReference = "00004"
-            serial = "70"
-            rfidTag = "3318A60C8000010000000046"
-            epcTagURI = ""
-            epcPureIdentityURI = ""
-        }
-        val parseGRAI = ParseGRAI(steps)
-        val rfidTag = parseGRAI.getRfidHexTag()
-        assertNotNull(rfidTag)
-    }
 }

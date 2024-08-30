@@ -106,6 +106,17 @@ class ReaderManager(private val context: Context) {
         return reader?.isReaderConnected() ?: false
     }
 
+    fun configReader() {
+        reader?.let {
+            println("Configuring reader")
+            it.readerMode = ReaderModeEnum.RFID_MODE
+            it.readMode = ReadModeEnum.NOTIFY_BY_ITEM_READ
+            it.readType = ReadTypeEnum.INVENTORY
+            it.setAntennaPower(AntennaPowerLevelsEnum.MAX)
+            it.setSessionControl(SessionControlEnum.S0)
+        }
+    }
+
     fun initRead() {
         reader?.initRead()
     }

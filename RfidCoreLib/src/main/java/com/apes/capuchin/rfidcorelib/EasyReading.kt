@@ -5,12 +5,9 @@ import com.apes.capuchin.rfidcorelib.enums.CoderEnum
 import com.apes.capuchin.rfidcorelib.enums.ReadModeEnum
 import com.apes.capuchin.rfidcorelib.enums.ReadTypeEnum
 import com.apes.capuchin.rfidcorelib.enums.ReaderModeEnum
-import com.apes.capuchin.rfidcorelib.models.EasyResponse
 import com.apes.capuchin.rfidcorelib.readers.EasyReader
 import com.apes.capuchin.rfidcorelib.readers.ErrorReader
 import com.apes.capuchin.rfidcorelib.readers.zebra.ZebraUhfReader
-import com.apes.capuchin.rfidcorelib.utils.CONNECTION_FAILED_CODE
-import com.apes.capuchin.rfidcorelib.utils.ERROR
 
 class EasyReading private constructor(val easyReader: EasyReader?) {
 

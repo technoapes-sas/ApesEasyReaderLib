@@ -7,10 +7,4 @@ enum class AntennaPowerLevelsEnum(val value: Int? = null) {
     MAX(value = 3),
     UNKNOWN;
 
-    companion object {
-        private fun getAntennaPowerLevel(key: Int?): AntennaPowerLevelsEnum {
-            val antennaPowers = entries.associateBy(AntennaPowerLevelsEnum::value)
-            return antennaPowers[key] ?: UNKNOWN
-        }
-    }
 }

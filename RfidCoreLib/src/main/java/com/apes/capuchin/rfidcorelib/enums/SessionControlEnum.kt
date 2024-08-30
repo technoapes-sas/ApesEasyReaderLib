@@ -8,10 +8,4 @@ enum class SessionControlEnum(val value: Int? = null) {
     S3(value = 3),
     UNKNOWN;
 
-    companion object {
-        private fun getSession(value: Int?): SessionControlEnum {
-            val session = entries.associateBy(SessionControlEnum::value)
-            return session[value] ?: UNKNOWN
-        }
-    }
 }

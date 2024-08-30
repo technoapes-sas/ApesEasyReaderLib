@@ -289,6 +289,4 @@ class ParseSGTIN(steps: StepsSGTIN) {
     }
 
     fun getSGTIN(): SGTIN = sgtin
-
-    fun getRfidTag(): String = getBinary().binToHex()
 }

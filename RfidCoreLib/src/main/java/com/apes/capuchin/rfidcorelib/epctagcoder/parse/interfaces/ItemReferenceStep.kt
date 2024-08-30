@@ -1,5 +1,5 @@
 package com.apes.capuchin.rfidcorelib.epctagcoder.parse.interfaces
 
-interface ItemReferenceStep {
+fun interface ItemReferenceStep {
     fun withItemReference(itemReference: String?): SerialStep
 }
