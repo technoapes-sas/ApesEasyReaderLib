@@ -97,39 +97,12 @@ project.afterEvaluate {
                         dependencyNode.appendNode('version', dep.version)
                     }
                 }
-
-                repositories {
-                    mavenLocal()
-                }
+            }
+        }
+        repositories {
+            maven {
+                url = uri("https://jitpack.io")
             }
         }
     }
 }
-/*publishing {
-    publications {
-        maven(MavenPublication) {
-            groupId = 'com.apes.capuchin.capuchinrfidlib'
-            artifactId = 'capuchin-rfid-lib'
-            version = '1.0.0'
-
-            // Publicar el archivo .aar o .jar
-            artifact("$buildDir/outputs/aar/RfidCoreLib-release.aar") // Para AAR
-
-            pom.withXml {
-                def dependenciesNode = asNode().appendNode('dependencies')
-                configurations.implementation.allDependencies.each { dep ->
-                    def dependencyNode = dependenciesNode.appendNode('dependency')
-                    dependencyNode.appendNode('groupId', dep.group)
-                    dependencyNode.appendNode('artifactId', dep.name)
-                    dependencyNode.appendNode('version', dep.version)
-                }
-            }
-        }
-    }
-
-    repositories {
-        maven {
-            url = uri("$rootDir/repo")
-        }
-    }
-}*/
