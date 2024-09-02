@@ -1,5 +1,6 @@
 plugins {
     id 'com.android.library'
+    id 'maven-publish'
     id 'org.jetbrains.kotlin.android' version '1.9.22'
 }
 
@@ -77,3 +78,58 @@ dependencies {
     // MockK para simular objetos dependientes (alternativa a Mockito)
     testImplementation libs.mockk
 }
+
+project.afterEvaluate {
+    publishing {
+        publications {
+            libraryProject(MavenPublication) {
+                setGroupId 'com.apes.capuchin.rfid'
+                setArtifactId 'capuchin-rfid-lib'
+                version '1.0.0'
+                artifact bundleReleaseAar
+
+                pom.withXml {
+                    def dependenciesNode = asNode().appendNode('dependencies')
+                    configurations.implementation.allDependencies.each { dep ->
+                        def dependencyNode = dependenciesNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', dep.group)
+                        dependencyNode.appendNode('artifactId', dep.name)
+                        dependencyNode.appendNode('version', dep.version)
+                    }
+                }
+
+                repositories {
+                    mavenLocal()
+                }
+            }
+        }
+    }
+}
+/*publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'com.apes.capuchin.capuchinrfidlib'
+            artifactId = 'capuchin-rfid-lib'
+            version = '1.0.0'
+
+            // Publicar el archivo .aar o .jar
+            artifact("$buildDir/outputs/aar/RfidCoreLib-release.aar") // Para AAR
+
+            pom.withXml {
+                def dependenciesNode = asNode().appendNode('dependencies')
+                configurations.implementation.allDependencies.each { dep ->
+                    def dependencyNode = dependenciesNode.appendNode('dependency')
+                    dependencyNode.appendNode('groupId', dep.group)
+                    dependencyNode.appendNode('artifactId', dep.name)
+                    dependencyNode.appendNode('version', dep.version)
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            url = uri("$rootDir/repo")
+        }
+    }
+}*/

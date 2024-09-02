@@ -9,9 +9,8 @@ import com.apes.capuchin.rfidcorelib.enums.ReadModeEnum
 import com.apes.capuchin.rfidcorelib.enums.ReadTypeEnum
 import com.apes.capuchin.rfidcorelib.enums.ReaderModeEnum
 import com.apes.capuchin.rfidcorelib.enums.SessionControlEnum
-import com.apes.capuchin.rfidcorelib.epctagcoder.result.BaseReading
-import com.apes.capuchin.rfidcorelib.models.EasyResponse
-import com.apes.capuchin.rfidcorelib.models.LocateTag
+import com.apes.capuchin.rfidcorelib.models.ConfigReader
+import com.apes.capuchin.rfidcorelib.models.ReaderState
 import com.apes.capuchin.rfidcorelib.readers.EasyReader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -95,25 +94,34 @@ class ReaderManager(private val context: Context) {
     }
 
     fun connectReader() {
-        reader?.initReader()
+        when {
+            !isReaderConnected() -> {
+                reader?.initReader()
+            }
+        }
     }
 
     fun disconnectReader() {
-        reader?.disconnectReader()
+        when {
+            isReaderConnected() -> {
+                reader?.disconnectReader()
+            }
+        }
     }
 
     fun isReaderConnected(): Boolean {
         return reader?.isReaderConnected() ?: false
     }
 
-    fun configReader() {
+    fun configReader(config: ConfigReader) {
         reader?.let {
             println("Configuring reader")
-            it.readerMode = ReaderModeEnum.RFID_MODE
-            it.readMode = ReadModeEnum.NOTIFY_BY_ITEM_READ
-            it.readType = ReadTypeEnum.INVENTORY
-            it.setAntennaPower(AntennaPowerLevelsEnum.MAX)
-            it.setSessionControl(SessionControlEnum.S0)
+            it.readerMode = config.readerMode
+            it.readMode = config.readMode
+            it.readType = config.readType
+            setAntennaPower(config.antennaPower)
+            setSessionControl(config.sessionControl)
+            setAntennaSound(config.beeper)
         }
     }
 
@@ -133,16 +141,16 @@ class ReaderManager(private val context: Context) {
     fun clearSearchTag() {
         reader?.clearSearch()
     }
-    
-    fun setSessionControl(session: SessionControlEnum) {
+
+    private fun setSessionControl(session: SessionControlEnum) {
         reader?.setSessionControl(session)
     }
     
     fun getSessionControl(): SessionControlEnum {
         return reader?.getSessionControl() ?: SessionControlEnum.UNKNOWN
     }
-    
-    fun setAntennaPower(power: AntennaPowerLevelsEnum) {
+
+    private fun setAntennaPower(power: AntennaPowerLevelsEnum) {
         reader?.setAntennaPower(power)
     }
     
@@ -150,22 +158,11 @@ class ReaderManager(private val context: Context) {
         return reader?.getAntennaPower() ?: AntennaPowerLevelsEnum.UNKNOWN
     }
     
-    fun setAntennaSound(beeper: BeeperLevelsEnum) {
+    private fun setAntennaSound(beeper: BeeperLevelsEnum) {
         reader?.setAntennaSound(beeper)
     }
     
     fun getAntennaSound(): BeeperLevelsEnum {
         return reader?.getAntennaSound() ?: BeeperLevelsEnum.UNKNOWN
     }
-
-    data class ReaderState(
-        val isReaderConnected: Boolean = false,
-        val isReading: Boolean = false,
-        val itemsRead: Set<BaseReading>? = null,
-        val locateTag: LocateTag? = null,
-        val antennaPower: AntennaPowerLevelsEnum? = null,
-        val antennaSound: BeeperLevelsEnum? = null,
-        val sessionControl: SessionControlEnum? = null,
-        val error: EasyResponse? = null
-    )
 }
