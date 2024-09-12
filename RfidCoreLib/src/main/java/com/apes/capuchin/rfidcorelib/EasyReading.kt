@@ -7,6 +7,7 @@ import com.apes.capuchin.rfidcorelib.enums.ReadTypeEnum
 import com.apes.capuchin.rfidcorelib.enums.ReaderModeEnum
 import com.apes.capuchin.rfidcorelib.readers.EasyReader
 import com.apes.capuchin.rfidcorelib.readers.ErrorReader
+import com.apes.capuchin.rfidcorelib.readers.chainway.ChainwayReader
 import com.apes.capuchin.rfidcorelib.readers.zebra.ZebraUhfReader
 
 class EasyReading private constructor(val easyReader: EasyReader?) {
@@ -37,7 +38,7 @@ class EasyReading private constructor(val easyReader: EasyReader?) {
 
         private fun detectAndConnect(context: Context) {
             try {
-                easyReader = ZebraUhfReader(context)
+                easyReader = ChainwayReader(context)
                 connectEasyReader()
             } catch (e: Exception) {
                 onErrorConnect()
