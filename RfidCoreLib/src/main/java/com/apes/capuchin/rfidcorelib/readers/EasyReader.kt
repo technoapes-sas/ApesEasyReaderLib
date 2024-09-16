@@ -124,13 +124,12 @@ abstract class EasyReader : EasyReaderObserver() {
                 when (readType) {
                     ReadTypeEnum.SEARCH_TAG -> LocateTag(search = epc, rssi = rssi.toLong())
                     else -> {
-                        var baseReading = getBaseReading(epc)
+                        val baseReading = getBaseReading(epc)
                         baseReading.rssi = rssi
                         when {
                             validateCompanyPrefix(baseReading) -> setBaseReading(baseReading)
-                            else -> baseReading = NONE(epc)
+                            else -> NONE(epc)
                         }
-                        baseReading
                     }
                 }
             }.filter {
@@ -181,8 +180,10 @@ abstract class EasyReader : EasyReaderObserver() {
         }
     }
 
-    private fun setBaseReading(baseReading: BaseReading) {
-        easyReaderInventory.value.itemsRead.add(baseReading)
+    private fun setBaseReading(baseReading: BaseReading): EasyReaderInventory {
+        return easyReaderInventory.value.also {
+            it.itemsRead.add(baseReading)
+        }
     }
 
     private fun continueReading(inventory: EasyReaderInventory): Boolean {
