@@ -16,19 +16,19 @@ class ReaderConfiguration {
     ): Boolean {
         var isGes2 = false
         reader?.let {
-            val gen2 = it.gen2.apply {
+            val gen2 = it.gen2?.apply {
                 queryTarget = 0
                 querySession = sessionControlEnum.value ?: 0
             }
-            isGes2 = it.setGen2(gen2)
+            isGes2 = gen2?.let { entity -> it.setGen2(entity) } ?: false
         }
 
         btReader?.let {
-            val gen2 = it.gen2.apply {
+            val gen2 = it.gen2?.apply {
                 queryTarget = 0
                 querySession = sessionControlEnum.value ?: 0
             }
-            isGes2 = it.setGen2(gen2)
+            isGes2 = gen2?.let { entity -> it.setGen2(entity) } ?: false
         }
         return isGes2
     }
@@ -65,7 +65,8 @@ class ReaderConfiguration {
             else -> 30
         }
 
-        if (reader != null) reader.power = powerLevel else btReader?.power = powerLevel
+        reader?.let { it.power = powerLevel }
+        btReader?.let { it.power = powerLevel }
     }
 
     fun getAntennaPower(reader: RFIDWithUHFUART?, btReader: RFIDWithUHFBLE?): AntennaPowerLevelsEnum {
