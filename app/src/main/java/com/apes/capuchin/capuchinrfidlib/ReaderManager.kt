@@ -10,7 +10,9 @@ import com.apes.capuchin.rfidcorelib.enums.ReadTypeEnum
 import com.apes.capuchin.rfidcorelib.enums.ReaderModeEnum
 import com.apes.capuchin.rfidcorelib.enums.SessionControlEnum
 import com.apes.capuchin.rfidcorelib.models.ConfigReader
-import com.apes.capuchin.rfidcorelib.models.ReaderState
+import com.apes.capuchin.rfidcorelib.models.ConnectionState
+import com.apes.capuchin.rfidcorelib.models.ReadState
+import com.apes.capuchin.rfidcorelib.models.ConfigState
 import com.apes.capuchin.rfidcorelib.readers.EasyReader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,8 +27,14 @@ class ReaderManager(private val context: Context) {
 
     private var reader: EasyReader? = null
 
-    private val _readerState: MutableStateFlow<ReaderState> = MutableStateFlow(ReaderState())
-    val readerState: StateFlow<ReaderState> = _readerState.asStateFlow()
+    private val _connectionState: MutableStateFlow<ConnectionState> = MutableStateFlow(ConnectionState())
+    val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
+
+    private val _readState: MutableStateFlow<ReadState> = MutableStateFlow(ReadState())
+    val readState: StateFlow<ReadState> = _readState.asStateFlow()
+
+    private val _configState: MutableStateFlow<ConfigState> = MutableStateFlow(ConfigState())
+    val configState: StateFlow<ConfigState> = _configState.asStateFlow()
 
     private val moduleConfigs: MutableMap<String, ConfigReader> = mutableMapOf()
 
@@ -76,39 +84,49 @@ class ReaderManager(private val context: Context) {
         with(easyReader) {
 
             observeEvent(onReaderConnected) { isConnected ->
-                _readerState.update { ReaderState(isReaderConnected = isConnected) }
+                _connectionState.update { it.copy(isReaderConnected = isConnected) }
             }
 
             observeEvent(onReaderConnectionFailed) { response ->
-                _readerState.update { ReaderState(error = response) }
+                _connectionState.update {
+                    it.copy(
+                        isReaderConnected = false,
+                        error = response
+                    )
+                }
             }
 
             observeEvent(onReaderError) { response ->
-                _readerState.update { ReaderState(error = response) }
+                _connectionState.update {
+                    it.copy(
+                        isReaderConnected = isReaderConnected(),
+                        error = response
+                    )
+                }
             }
 
             observeEvent(onItemsRead) { inventory ->
-                _readerState.update { ReaderState(itemsRead = inventory.itemsRead.toSet()) }
-            }
-
-            observeEvent(onAntennaPowerChanged) { power ->
-                _readerState.update { ReaderState(antennaPower = power) }
-            }
-
-            observeEvent(onAntennaSoundChanged) { sound ->
-                _readerState.update { ReaderState(antennaSound = sound) }
-            }
-
-            observeEvent(onSessionControlChanged) { session ->
-                _readerState.update { ReaderState(sessionControl = session) }
+                _readState.update { it.copy(itemsRead = inventory.itemsRead.toSet()) }
             }
 
             observeEvent(onLocateTag) { locate ->
-                _readerState.update { ReaderState(locateTag = locate) }
+                _readState.update { it.copy(locateTag = locate) }
             }
 
             observeEvent(onStartReading) { startStop ->
-                _readerState.update { ReaderState(isReading = startStop.startStop ?: false) }
+                _readState.update { ReadState(isReading = startStop.startStop ?: false) }
+            }
+
+            observeEvent(onAntennaPowerChanged) { power ->
+                _configState.update { ConfigState(antennaPower = power) }
+            }
+
+            observeEvent(onAntennaSoundChanged) { sound ->
+                _configState.update { ConfigState(antennaSound = sound) }
+            }
+
+            observeEvent(onSessionControlChanged) { session ->
+                _configState.update { ConfigState(sessionControl = session) }
             }
         }
     }

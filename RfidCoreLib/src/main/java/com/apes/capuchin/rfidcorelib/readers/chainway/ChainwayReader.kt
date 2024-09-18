@@ -18,6 +18,7 @@ import com.apes.capuchin.rfidcorelib.enums.SettingsEnum
 import com.apes.capuchin.rfidcorelib.models.EasyResponse
 import com.apes.capuchin.rfidcorelib.models.StartStopReading
 import com.apes.capuchin.rfidcorelib.readers.EasyReader
+import com.apes.capuchin.rfidcorelib.utils.CONNECTION_CLOSE_CODE
 import com.apes.capuchin.rfidcorelib.utils.InitTask
 import com.apes.capuchin.rfidcorelib.utils.SoundPlayer
 import com.rscja.deviceapi.RFIDWithUHFBLE
@@ -47,8 +48,10 @@ class ChainwayReader(
         try {
             if (deviceAddress == null) {
                 reader = RFIDWithUHFUART.getInstance()
+                initUhfReader()
             } else {
                 btReader = RFIDWithUHFBLE.getInstance()
+                initBtReader()
             }
         } catch (ex: Exception) {
             notifyObservers(
@@ -61,13 +64,19 @@ class ChainwayReader(
             Logger.getLogger(ChainwayReader::class.java.name).warning(ex.message)
             return
         }
-        reader?.let { initUhfReader() } ?: initBtReader()
     }
 
     override fun disconnectReader() {
-        reader?.free() ?: btReader?.free()
+        isReaderConnected = reader?.free() ?: btReader?.free() ?: false
         soundPlayer.releaseSoundPool()
         scannerManager.closeScanner()
+        notifyObservers(
+            EasyResponse(
+                success = SUCCESS,
+                message = context.getString(R.string.disconnect_reader),
+                code = CONNECTION_CLOSE_CODE
+            )
+        )
     }
 
     override fun isReaderConnected(): Boolean = isReaderConnected
@@ -107,7 +116,10 @@ class ChainwayReader(
     override fun setSessionControl(sessionControlEnum: SessionControlEnum) {
         when {
             readerConfiguration.setSessionControl(reader, btReader, sessionControlEnum) ->
-                notifySettingsChange(SettingsEnum.CHANGE_SESSION_CONTROL, session = sessionControlEnum)
+                notifySettingsChange(
+                    SettingsEnum.CHANGE_SESSION_CONTROL,
+                    session = sessionControlEnum
+                )
 
             else -> notifyCommandFail()
         }
@@ -127,8 +139,15 @@ class ChainwayReader(
     }
 
     override fun setAntennaPower(antennaPowerLevelsEnum: AntennaPowerLevelsEnum) {
-        readerConfiguration.setAntennaPower(reader, btReader, antennaPowerLevelsEnum)
-        notifySettingsChange(SettingsEnum.CHANGE_ANTENNA_POWER, power = antennaPowerLevelsEnum)
+        when {
+            readerConfiguration.setAntennaPower(reader, btReader, antennaPowerLevelsEnum) ->
+                notifySettingsChange(
+                    SettingsEnum.CHANGE_ANTENNA_POWER,
+                    power = antennaPowerLevelsEnum
+                )
+
+            else -> notifyCommandFail()
+        }
     }
 
     override fun getAntennaPower(): AntennaPowerLevelsEnum {
@@ -173,7 +192,9 @@ class ChainwayReader(
     }
 
     private fun initBtReader() {
-        if (btReader?.init(context) == true) {
+
+        isReaderConnected = btReader?.init(context) ?: false
+        if (isReaderConnected) {
             btReader?.setKeyEventCallback(object : KeyEventCallback {
                 override fun onKeyDown(i: Int) {
                     initRead()
@@ -195,10 +216,8 @@ class ChainwayReader(
                                 code = CONNECTION_SUCCEEDED_CODE
                             )
                         )
-                        isReaderConnected = true
                     }
 
-                    ConnectionStatus.CONNECTING -> isReaderConnected = false
                     ConnectionStatus.DISCONNECTED -> {
                         notifyObservers(
                             EasyResponse(
@@ -207,7 +226,6 @@ class ChainwayReader(
                                 code = CONNECTION_FAILED_CODE
                             )
                         )
-                        isReaderConnected = false
                     }
 
                     else -> Unit
@@ -242,8 +260,13 @@ class ChainwayReader(
 
     private fun readInventory() {
         if (!loopFlag) {
-            reader?.setInventoryCallback(::handleInventory)
-            loopFlag = reader?.startInventoryTag() ?: false
+            if (reader != null) {
+                reader?.setInventoryCallback(::handleInventory)
+            }
+            if (btReader != null) {
+                btReader?.setInventoryCallback(::handleInventory)
+            }
+            loopFlag = reader?.startInventoryTag() ?: btReader?.startInventoryTag() ?: false
             if (!loopFlag) {
                 stopRead()
             }

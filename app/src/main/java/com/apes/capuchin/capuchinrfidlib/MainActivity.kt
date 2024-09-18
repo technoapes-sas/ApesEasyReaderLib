@@ -16,7 +16,7 @@ class MainActivity : AppCompatActivity() {
 
         val readerManager = ReaderManager(applicationContext)
         lifecycleScope.launch {
-            readerManager.readerState.collect { readerState ->
+            readerManager.connectionState.collect { readerState ->
                 // Handle reader state changes
                 when {
                     readerState.isReaderConnected -> {

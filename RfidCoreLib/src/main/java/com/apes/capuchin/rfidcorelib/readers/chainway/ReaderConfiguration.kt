@@ -33,13 +33,19 @@ class ReaderConfiguration {
         return isGes2
     }
 
-    fun getSessionControl(reader: RFIDWithUHFUART?, btReader: RFIDWithUHFBLE?): SessionControlEnum {
+    fun getSessionControl(
+        reader: RFIDWithUHFUART?,
+        btReader: RFIDWithUHFBLE?
+    ): SessionControlEnum {
         return reader?.gen2?.querySession?.toSessionControlEnum()
             ?: btReader?.gen2?.querySession?.toSessionControlEnum()
             ?: SessionControlEnum.S0
     }
 
-    fun setAntennaSound(beeperLevelsEnum: BeeperLevelsEnum, soundPlayer: SoundPlayer) {
+    fun setAntennaSound(
+        beeperLevelsEnum: BeeperLevelsEnum,
+        soundPlayer: SoundPlayer
+    ) {
         when (beeperLevelsEnum) {
             BeeperLevelsEnum.MAX -> soundPlayer.soundLevel = 100
             BeeperLevelsEnum.MEDIUM -> soundPlayer.soundLevel = 66
@@ -58,18 +64,35 @@ class ReaderConfiguration {
         }
     }
 
-    fun setAntennaPower(reader: RFIDWithUHFUART?, btReader: RFIDWithUHFBLE?, antennaPowerLevelsEnum: AntennaPowerLevelsEnum) {
+    fun setAntennaPower(
+        reader: RFIDWithUHFUART?,
+        btReader: RFIDWithUHFBLE?,
+        antennaPowerLevelsEnum: AntennaPowerLevelsEnum
+    ): Boolean {
         val powerLevel = when (antennaPowerLevelsEnum) {
             AntennaPowerLevelsEnum.MEDIUM -> 20
             AntennaPowerLevelsEnum.MIN -> 10
             else -> 30
         }
 
-        reader?.let { it.power = powerLevel }
-        btReader?.let { it.power = powerLevel }
+        var hasStatusChanged = false
+
+        reader?.let {
+            it.power = powerLevel
+            hasStatusChanged = true
+        }
+        btReader?.let {
+            it.power = powerLevel
+            hasStatusChanged = true
+        }
+
+        return hasStatusChanged
     }
 
-    fun getAntennaPower(reader: RFIDWithUHFUART?, btReader: RFIDWithUHFBLE?): AntennaPowerLevelsEnum {
+    fun getAntennaPower(
+        reader: RFIDWithUHFUART?,
+        btReader: RFIDWithUHFBLE?
+    ): AntennaPowerLevelsEnum {
         return when (reader?.power ?: btReader?.power) {
             10 -> AntennaPowerLevelsEnum.MIN
             20 -> AntennaPowerLevelsEnum.MEDIUM
