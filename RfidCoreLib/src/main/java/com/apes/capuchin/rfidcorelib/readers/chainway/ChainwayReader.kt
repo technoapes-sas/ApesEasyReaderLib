@@ -128,7 +128,7 @@ class ChainwayReader(
 
     override fun setAntennaPower(antennaPowerLevelsEnum: AntennaPowerLevelsEnum) {
         readerConfiguration.setAntennaPower(reader, btReader, antennaPowerLevelsEnum)
-        notifySettingsChange(SettingsEnum.CHANGE_ANTENNA_SOUND, power = antennaPowerLevelsEnum)
+        notifySettingsChange(SettingsEnum.CHANGE_ANTENNA_POWER, power = antennaPowerLevelsEnum)
     }
 
     override fun getAntennaPower(): AntennaPowerLevelsEnum {

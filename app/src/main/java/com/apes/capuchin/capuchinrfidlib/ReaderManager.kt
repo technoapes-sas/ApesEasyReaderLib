@@ -25,8 +25,28 @@ class ReaderManager(private val context: Context) {
 
     private var reader: EasyReader? = null
 
-    private val _readerState: MutableStateFlow<ReaderState> =  MutableStateFlow(ReaderState())
+    private val _readerState: MutableStateFlow<ReaderState> = MutableStateFlow(ReaderState())
     val readerState: StateFlow<ReaderState> = _readerState.asStateFlow()
+
+    private val moduleConfigs: MutableMap<String, ConfigReader> = mutableMapOf()
+
+    var readerMode: ReaderModeEnum
+        get() = reader?.readerMode ?: ReaderModeEnum.RFID_MODE
+        set(value) {
+            reader?.readerMode = value
+        }
+
+    var readMode: ReadModeEnum
+        get() = reader?.readMode ?: ReadModeEnum.NOTIFY_BY_ITEM_READ
+        set(value) {
+            reader?.readMode = value
+        }
+
+    var readType: ReadTypeEnum
+        get() = reader?.readType ?: ReadTypeEnum.INVENTORY
+        set(value) {
+            reader?.readType = value
+        }
 
     init {
         buildReader()
@@ -50,7 +70,7 @@ class ReaderManager(private val context: Context) {
             flow.collect { action(it) }
         }
     }
-    
+
     private fun observeReaderEvents(easyReader: EasyReader) {
 
         with(easyReader) {
@@ -93,6 +113,49 @@ class ReaderManager(private val context: Context) {
         }
     }
 
+    private fun applyConfig(value: Any) {
+        when (value) {
+            is ReaderModeEnum -> readerMode = value
+            is ReadModeEnum -> readMode = value
+            is ReadTypeEnum -> readType = value
+            is AntennaPowerLevelsEnum -> setAntennaPower(value)
+            is SessionControlEnum -> setSessionControl(value)
+            is BeeperLevelsEnum -> setAntennaSound(value)
+        }
+    }
+
+    fun hasConfigByModule(key: String): Boolean {
+        return moduleConfigs.containsKey(key)
+    }
+
+    fun getConfigByModule(key: String): ConfigReader? {
+        return moduleConfigs[key]
+    }
+
+    fun applyConfigByModule(key: String) {
+        moduleConfigs.filter { it.key == key }.values.forEach { applyConfig(it) }
+    }
+
+    fun configReader(key: String, config: ConfigReader) {
+        when {
+            moduleConfigs.containsKey(key) -> {
+                config.readerMode?.let { moduleConfigs[key]?.readerMode = it }
+                config.readMode?.let { moduleConfigs[key]?.readMode = it }
+                config.readType?.let { moduleConfigs[key]?.readType = it }
+                config.antennaPower?.let { moduleConfigs[key]?.antennaPower = it }
+                config.sessionControl?.let { moduleConfigs[key]?.sessionControl = it }
+                config.beeper?.let { moduleConfigs[key]?.beeper = it }
+            }
+
+            else -> moduleConfigs[key] = config
+        }
+        applyConfigByModule(key)
+    }
+
+    fun isReaderConnected(): Boolean {
+        return reader?.isReaderConnected() ?: false
+    }
+
     fun connectReader() {
         when {
             !isReaderConnected() -> {
@@ -106,22 +169,6 @@ class ReaderManager(private val context: Context) {
             isReaderConnected() -> {
                 reader?.disconnectReader()
             }
-        }
-    }
-
-    fun isReaderConnected(): Boolean {
-        return reader?.isReaderConnected() ?: false
-    }
-
-    fun configReader(config: ConfigReader) {
-        reader?.let {
-            println("Configuring reader")
-            it.readerMode = config.readerMode
-            it.readMode = config.readMode
-            it.readType = config.readType
-            setAntennaPower(config.antennaPower)
-            setSessionControl(config.sessionControl)
-            setAntennaSound(config.beeper)
         }
     }
 
@@ -142,26 +189,30 @@ class ReaderManager(private val context: Context) {
         reader?.clearSearch()
     }
 
-    private fun setSessionControl(session: SessionControlEnum) {
+    fun clearBuffer() {
+        reader?.clearBuffer()
+    }
+
+    fun setSessionControl(session: SessionControlEnum) {
         reader?.setSessionControl(session)
     }
-    
+
     fun getSessionControl(): SessionControlEnum {
         return reader?.getSessionControl() ?: SessionControlEnum.UNKNOWN
     }
 
-    private fun setAntennaPower(power: AntennaPowerLevelsEnum) {
+    fun setAntennaPower(power: AntennaPowerLevelsEnum) {
         reader?.setAntennaPower(power)
     }
-    
+
     fun getAntennaPower(): AntennaPowerLevelsEnum {
         return reader?.getAntennaPower() ?: AntennaPowerLevelsEnum.UNKNOWN
     }
-    
-    private fun setAntennaSound(beeper: BeeperLevelsEnum) {
+
+    fun setAntennaSound(beeper: BeeperLevelsEnum) {
         reader?.setAntennaSound(beeper)
     }
-    
+
     fun getAntennaSound(): BeeperLevelsEnum {
         return reader?.getAntennaSound() ?: BeeperLevelsEnum.UNKNOWN
     }

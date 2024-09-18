@@ -37,7 +37,7 @@ abstract class EasyReader : EasyReaderObserver() {
     private val easyReaderInventory by lazy { MutableStateFlow(EasyReaderInventory()) }
     private val inventoryFlow by lazy { MutableStateFlow(Pair(first = "", second = 0)) }
 
-    private var easyReaderSettings: EasyReaderSettings? = null
+    private val easyReaderSettings: EasyReaderSettings by lazy { EasyReaderSettings() }
 
     val companyPrefixes: MutableList<String> by lazy { mutableListOf() }
 
@@ -72,12 +72,11 @@ abstract class EasyReader : EasyReaderObserver() {
         beeperLevel: BeeperLevelsEnum? = null,
         session: SessionControlEnum? = null
     ) {
-        easyReaderSettings?.let { settings ->
-            settings.lastSettingChanged = lastSettings
-            settings.antennaPower = power
-            settings.antennaSound = beeperLevel
-            settings.sessionControl = session
-            notifyObservers(settings)
+        easyReaderSettings.apply {
+            lastSettingChanged = lastSettings
+            antennaPower = power
+            antennaSound = beeperLevel
+            sessionControl = session
         }
         notifyObservers(easyReaderSettings)
     }
@@ -193,8 +192,8 @@ abstract class EasyReader : EasyReaderObserver() {
         }
     }
 
-    private fun clearBuffer() {
-        easyReaderInventory.update { it.copy(itemsRead = mutableSetOf()) }
+    fun clearBuffer() {
+        easyReaderInventory.value.itemsRead.clear()
     }
 
     fun clearSearch() {

@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
+import com.apes.capuchin.rfidcorelib.enums.ReadTypeEnum
 import com.apes.capuchin.rfidcorelib.models.ConfigReader
 import kotlinx.coroutines.launch
 
@@ -14,7 +15,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         val readerManager = ReaderManager(applicationContext)
-        readerManager.configReader(ConfigReader())
         lifecycleScope.launch {
             readerManager.readerState.collect { readerState ->
                 // Handle reader state changes
