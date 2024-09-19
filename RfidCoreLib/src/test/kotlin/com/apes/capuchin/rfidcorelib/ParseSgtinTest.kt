@@ -29,7 +29,6 @@ class ParseSgtinTest {
             prefixLength = PrefixLengthEnum.DIGIT_7
             tagSize = SGTINTagSizeEnum.BITS_96
             filterValue = SGTINFilterValueEnum.POS_ITEM_1
-            tableItem = TableItem()
         }
         val parseSGTIN = ParseSGTIN(steps)
         assertEquals("7705751", parseSGTIN.companyPrefix)
@@ -51,7 +50,6 @@ class ParseSgtinTest {
             prefixLength = PrefixLengthEnum.DIGIT_7
             tagSize = SGTINTagSizeEnum.BITS_96
             filterValue = SGTINFilterValueEnum.POS_ITEM_1
-            tableItem = TableItem()
         }
         val parseSGTIN = ParseSGTIN(steps)
         parseSGTIN.handleParseWithRfidTag(SGTINPartitionTableList())
@@ -74,7 +72,6 @@ class ParseSgtinTest {
             prefixLength = PrefixLengthEnum.DIGIT_7
             tagSize = SGTINTagSizeEnum.BITS_96
             filterValue = SGTINFilterValueEnum.POS_ITEM_1
-            tableItem = TableItem()
         }
         val parseSGTIN = ParseSGTIN(steps)
         parseSGTIN.handleParseWithoutRfidTag(SGTINPartitionTableList())
@@ -98,7 +95,6 @@ class ParseSgtinTest {
             prefixLength = PrefixLengthEnum.DIGIT_7
             tagSize = SGTINTagSizeEnum.BITS_96
             filterValue = SGTINFilterValueEnum.POS_ITEM_1
-            tableItem = TableItem()
         }
         val parseSGTIN = ParseSGTIN(steps)
         parseSGTIN.parse()
@@ -121,7 +117,6 @@ class ParseSgtinTest {
             prefixLength = PrefixLengthEnum.DIGIT_7
             tagSize = SGTINTagSizeEnum.BITS_96
             filterValue = SGTINFilterValueEnum.POS_ITEM_1
-            tableItem = TableItem()
         }
         val parseSGTIN = ParseSGTIN(steps)
         val binary = parseSGTIN.getBinary()
@@ -142,7 +137,6 @@ class ParseSgtinTest {
             prefixLength = PrefixLengthEnum.DIGIT_7
             tagSize = SGTINTagSizeEnum.BITS_96
             filterValue = SGTINFilterValueEnum.POS_ITEM_1
-            tableItem = TableItem()
         }
         val parseSGTIN = ParseSGTIN(steps)
         val checkDigit = parseSGTIN.getCheckDigit()
@@ -163,7 +157,6 @@ class ParseSgtinTest {
             prefixLength = PrefixLengthEnum.DIGIT_7
             tagSize = SGTINTagSizeEnum.BITS_96
             filterValue = SGTINFilterValueEnum.POS_ITEM_1
-            tableItem = TableItem()
         }
         val parseSGTIN = ParseSGTIN(steps)
         assertDoesNotThrow { parseSGTIN.validateSerial() }
@@ -183,7 +176,6 @@ class ParseSgtinTest {
             prefixLength = PrefixLengthEnum.DIGIT_7
             tagSize = SGTINTagSizeEnum.BITS_96
             filterValue = SGTINFilterValueEnum.POS_ITEM_1
-            tableItem = TableItem()
         }
         val parseSGTIN = ParseSGTIN(steps)
         assertDoesNotThrow { parseSGTIN.validateExtensionDigitAndItemReference() }
@@ -203,7 +195,6 @@ class ParseSgtinTest {
             prefixLength = PrefixLengthEnum.DIGIT_7
             tagSize = SGTINTagSizeEnum.BITS_96
             filterValue = SGTINFilterValueEnum.POS_ITEM_1
-            tableItem = TableItem()
         }
         val parseSGTIN = ParseSGTIN(steps)
         val sgtin = parseSGTIN.getSGTIN()

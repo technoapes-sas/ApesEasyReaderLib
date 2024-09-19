@@ -1,9 +1,5 @@
 package com.apes.capuchin.rfidcorelib.readers
 
-import com.apes.capuchin.rfidcorelib.utils.CONNECTION_CLOSE_CODE
-import com.apes.capuchin.rfidcorelib.utils.CONNECTION_FAILED_CODE
-import com.apes.capuchin.rfidcorelib.utils.CONNECTION_SUCCEEDED_CODE
-import com.apes.capuchin.rfidcorelib.utils.EMPTY_STRING
 import com.apes.capuchin.rfidcorelib.EasyReaderObserver
 import com.apes.capuchin.rfidcorelib.enums.AntennaPowerLevelsEnum
 import com.apes.capuchin.rfidcorelib.enums.BeeperLevelsEnum
@@ -19,17 +15,16 @@ import com.apes.capuchin.rfidcorelib.epctagcoder.result.BaseReading
 import com.apes.capuchin.rfidcorelib.epctagcoder.result.NONE
 import com.apes.capuchin.rfidcorelib.models.EasyReaderInventory
 import com.apes.capuchin.rfidcorelib.models.EasyReaderSettings
-import com.apes.capuchin.rfidcorelib.models.EasyResponse
 import com.apes.capuchin.rfidcorelib.models.HighReading
 import com.apes.capuchin.rfidcorelib.models.LocateTag
 import com.apes.capuchin.rfidcorelib.models.StartStopReading
+import com.apes.capuchin.rfidcorelib.utils.EMPTY_STRING
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 abstract class EasyReader : EasyReaderObserver() {
@@ -62,6 +57,10 @@ abstract class EasyReader : EasyReaderObserver() {
     abstract fun setAntennaPower(antennaPowerLevelsEnum: AntennaPowerLevelsEnum)
     abstract fun getAntennaPower(): AntennaPowerLevelsEnum
 
+    init {
+        addReaderSubscription()
+    }
+
     protected fun notifyObservers(arg: Any?) {
         handleReportedArg(arg)
     }
@@ -82,28 +81,41 @@ abstract class EasyReader : EasyReaderObserver() {
     }
 
     protected fun notifyItemRead(epc: String, rssi: Int) {
-        inventoryFlow.update { it.copy(first = epc, second = rssi) }
+        //inventoryFlow.update { Pair(first = epc, second = rssi) }
+        CoroutineScope(Dispatchers.IO).launch {
+            if (epc.isEmpty() || rssi == 0) return@launch
+
+            val result: Any = when (readType) {
+                ReadTypeEnum.SEARCH_TAG -> LocateTag(search = epc, rssi = rssi.toLong())
+                else -> {
+                    val baseReading = getBaseReading(epc)
+                    baseReading.rssi = rssi
+                    when {
+                        validateCompanyPrefix(baseReading) -> setBaseReading(baseReading)
+                        else -> NONE(epc)
+                    }
+                }
+            }
+
+            val isContinue = when (readType) {
+                ReadTypeEnum.SEARCH_TAG -> true
+                else -> continueReading(easyReaderInventory.value)
+            }
+
+            if (isContinue) {
+                notifyObservers(result)
+            }
+        }
     }
 
     private fun handleReportedArg(arg: Any?) {
         CoroutineScope(Dispatchers.IO).launch {
             update(arg)
-            when {
-                arg is EasyResponse ->
-                    handleEasyResponse(arg)
-
-                arg is StartStopReading && readMode.isNotifyWhenStopped() ->
-                    handleStartStopReading(arg)
+            if (arg is StartStopReading && readMode.isNotifyWhenStopped()) {
+                handleStartStopReading(arg)
             }
         }.runCatching {
             throw IllegalArgumentException("An error has occurred while reading.")
-        }
-    }
-
-    private suspend fun handleEasyResponse(arg: EasyResponse) {
-        when (arg.code) {
-            CONNECTION_SUCCEEDED_CODE -> addReaderSubscription()
-            CONNECTION_CLOSE_CODE, CONNECTION_FAILED_CODE -> removeReaderSubscription()
         }
     }
 
@@ -117,34 +129,32 @@ abstract class EasyReader : EasyReaderObserver() {
         }
     }
 
-    private suspend fun addReaderSubscription() {
-        inventoryFlow.filter { (epc, rssi) -> epc.isNotEmpty() && rssi != 0 }
-            .map { (epc, rssi) ->
-                when (readType) {
-                    ReadTypeEnum.SEARCH_TAG -> LocateTag(search = epc, rssi = rssi.toLong())
-                    else -> {
-                        val baseReading = getBaseReading(epc)
-                        baseReading.rssi = rssi
-                        when {
-                            validateCompanyPrefix(baseReading) -> setBaseReading(baseReading)
-                            else -> NONE(epc)
+    private fun addReaderSubscription() {
+        CoroutineScope(Dispatchers.Default).launch {
+            inventoryFlow.filter { (epc, rssi) -> epc.isNotEmpty() && rssi != 0 }
+                .map { (epc, rssi) ->
+                    when (readType) {
+                        ReadTypeEnum.SEARCH_TAG -> LocateTag(search = epc, rssi = rssi.toLong())
+                        else -> {
+                            val baseReading = getBaseReading(epc)
+                            baseReading.rssi = rssi
+                            when {
+                                validateCompanyPrefix(baseReading) -> setBaseReading(baseReading)
+                                else -> NONE(epc)
+                            }
                         }
                     }
+                }.filter {
+                    when (readType) {
+                        ReadTypeEnum.SEARCH_TAG -> true
+                        else -> continueReading(easyReaderInventory.value)
+                    }
+                }.catch {
+                    it.printStackTrace()
+                }.collect { reading ->
+                    notifyObservers(reading)
                 }
-            }.filter {
-                when (readType) {
-                    ReadTypeEnum.SEARCH_TAG -> true
-                    else -> continueReading(easyReaderInventory.value)
-                }
-            }.catch {
-                it.printStackTrace()
-            }.collect { reading ->
-                notifyObservers(reading)
-            }
-    }
-
-    private fun removeReaderSubscription() {
-        inventoryFlow.update { it.copy(first = "", second = 0) }
+        }
     }
 
     private fun observeInventory() {

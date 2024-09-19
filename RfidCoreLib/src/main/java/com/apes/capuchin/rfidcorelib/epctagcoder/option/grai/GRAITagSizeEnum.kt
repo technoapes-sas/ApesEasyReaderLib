@@ -1,12 +1,12 @@
 package com.apes.capuchin.rfidcorelib.epctagcoder.option.grai
 
-enum class GRAITagSizeEnum(val value: Int? = null) {
+enum class GRAITagSizeEnum(val value: Int) {
 
     BITS_96(value = 96) {
         override fun getHeader(): Int = 51
         override fun getSerialBitCount(): Int = 38
     },
-    UNKNOWN {
+    UNKNOWN(value = 0) {
         override fun getHeader(): Int = 0
         override fun getSerialBitCount(): Int = 0
     };

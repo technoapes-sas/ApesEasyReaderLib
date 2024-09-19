@@ -14,11 +14,13 @@ class SGTINPartitionTableList {
         TableItem(partitionValue = 6, m = 20, l = 6, n = 24, digits = 7)
     )
 
-    fun getPartitionByL(index: Int): TableItem? {
+    fun getPartitionByL(index: Int): TableItem {
         return tableItemList.firstOrNull { it.l == index }
+            ?: tableItemList.first { it.partitionValue == 6 }
     }
 
-    fun getPartitionByValue(index: Int): TableItem? {
+    fun getPartitionByValue(index: Int): TableItem {
         return tableItemList.firstOrNull { it.partitionValue == index }
+            ?: tableItemList.first { it.partitionValue == 6 }
     }
 }

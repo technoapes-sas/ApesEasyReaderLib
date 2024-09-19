@@ -13,14 +13,16 @@ import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.binToHex
 import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.decToBin
 import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.hexToBin
 import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.strZero
+import com.apes.capuchin.rfidcorelib.utils.EMPTY_STRING
 import java.util.regex.Pattern
 import kotlin.math.ceil
 
 class ParseGRAI(steps: StepsGRAI) {
 
     private var prefixLength: PrefixLengthEnum? = null
-    private var tableItem: TableItem? = null
     private var remainder: Int? = null
+
+    private lateinit var tableItem: TableItem
 
     var grai: GRAI
     var companyPrefix: String
@@ -53,27 +55,30 @@ class ParseGRAI(steps: StepsGRAI) {
         val partitionBin = inputBin.substring(11, 14)
 
         tagSize = GRAITagSizeEnum.findByValue(GRAIHeaderEnum.findByValue(headerBin).getTagSize())
+        require(tagSize != GRAITagSizeEnum.BITS_96) { "Tag size is invalid" }
+
         tableItem = partitionTableList.getPartitionByValue(partitionBin.toInt(2))
 
-        val filterDec = filterBin.toLong(2).toString()
-        val companyPrefixBin = inputBin.substring(14, 14 + (tableItem?.m ?: 0))
-        val assetTypeBin = inputBin.substring(
-            14 + (tableItem?.m ?: 0),
-            14 + (tableItem?.m ?: 0) + (tableItem?.n ?: 0)
-        )
-        val serialBin = inputBin
-            .substring(14 + (tableItem?.m ?: 0) + (tableItem?.n ?: 0))
+        val filterDec = filterBin.toInt(2)
+
+        val companyPrefixBin = inputBin.substring(14, 14 + tableItem.m)
+        require(companyPrefixBin.length == tableItem.m) { "Company Prefix is invalid" }
+
+        val assetTypeBin = inputBin.substring(14 + tableItem.m, 14 + tableItem.m + tableItem.n)
+        require(assetTypeBin.length == tableItem.n) { "Item Reference is invalid" }
+
+        val serialBin = inputBin.substring(14 + tableItem.m + tableItem.n)
+        require(serialBin.length == tagSize.getSerialBitCount()) { "Serial is invalid" }
+
         val companyPrefixDec = companyPrefixBin.binToDec()
-        val assetTypeDec = assetTypeBin
-            .binToDec()
-            .strZero(tableItem?.digits ?: 0)
+        val assetTypeDec = assetTypeBin.binToDec().strZero(tableItem.digits)
 
         serial = serialBin.binToDec()
         assetType = assetTypeDec.substring(1)
 
-        companyPrefix = companyPrefixDec.strZero(tableItem?.l ?: 0)
-        filterValue = GRAIFilterValueEnum.findByValue(filterDec.toInt())
-        prefixLength = PrefixLengthEnum.findByCode(tableItem?.l ?: 0)
+        companyPrefix = companyPrefixDec.strZero(tableItem.l)
+        filterValue = GRAIFilterValueEnum.findByValue(filterDec)
+        prefixLength = PrefixLengthEnum.findByCode(tableItem.l)
     }
 
     fun handleParseWithoutRfidTag(partitionTableList: GRAIPartitionTableList) {
@@ -123,63 +128,73 @@ class ParseGRAI(steps: StepsGRAI) {
                 validateCompanyPrefix()
             }
         }
-        tableItem = partitionTableList.getPartitionByL(prefixLength?.value ?: 6) ?: TableItem()
+        tableItem = partitionTableList.getPartitionByL(prefixLength?.value ?: 6)
     }
 
     fun parse() {
 
         val partitionTableList = GRAIPartitionTableList(tagSize)
 
-        when {
-            rfidTag.isEmpty() -> handleParseWithoutRfidTag(partitionTableList)
-            else -> handleParseWithRfidTag(partitionTableList)
+        try {
+            when {
+                rfidTag.isEmpty() -> handleParseWithoutRfidTag(partitionTableList)
+                else -> handleParseWithRfidTag(partitionTableList)
+            }
+
+            val outputBin = getBinary()
+            val outputHex = outputBin.binToHex()
+
+            grai.epcScheme = "grai"
+            grai.applicationIdentifier = "8003"
+            grai.tagSize = tagSize.value.toString()
+            grai.filterValue = filterValue.value.toString()
+            grai.partitionValue = tableItem.partitionValue.toString()
+            grai.prefixLength = prefixLength?.value.toString()
+            grai.companyPrefix = companyPrefix
+            grai.assetType = assetType
+            grai.serial = serial
+            grai.epcPureIdentityURI = String.format(
+                "urn:epc:id:grai:%s.%s.%s",
+                companyPrefix,
+                assetType,
+                serial
+            )
+            grai.epcTagURI = String.format(
+                "urn:epc:tag:grai-%s:%s.%s.%s.%s",
+                tagSize.value,
+                filterValue.value,
+                companyPrefix,
+                assetType,
+                serial
+            )
+            grai.epcRawURI = String.format(
+                "urn:epc:raw:%s.x%s",
+                tagSize.value + (remainder ?: 0),
+                outputHex
+            )
+            grai.binary = outputBin
+            grai.rfidTag = outputHex
+        } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
+            throw IllegalArgumentException("GRAI is invalid")
         }
-
-        val outputBin = getBinary()
-        val outputHex = outputBin.binToHex()
-
-        grai.epcScheme = "grai"
-        grai.applicationIdentifier = "8003"
-        grai.tagSize = tagSize.value.toString()
-        grai.filterValue = filterValue.value.toString()
-        grai.partitionValue = tableItem?.partitionValue?.toString().orEmpty()
-        grai.prefixLength = prefixLength?.value.toString()
-        grai.companyPrefix = companyPrefix
-        grai.assetType = assetType
-        grai.serial = serial
-        grai.epcPureIdentityURI = String.format(
-            "urn:epc:id:grai:%s.%s.%s",
-            companyPrefix,
-            assetType,
-            serial
-        )
-        grai.epcTagURI = String.format(
-            "urn:epc:tag:grai-%s:%s.%s.%s.%s",
-            tagSize.value,
-            filterValue.value,
-            companyPrefix,
-            assetType,
-            serial
-        )
-        grai.epcRawURI = String.format(
-            "urn:epc:raw:%s.x%s",
-            (tagSize.value ?: 0) + (remainder ?: 0),
-            outputHex
-        )
-        grai.binary = outputBin
-        grai.rfidTag = outputHex
     }
 
     fun getBinary(): String {
-        remainder = (ceil((tagSize.value ?: 0) / 16.0) * 16).toInt() - (tagSize.value ?: 0)
-        return StringBuilder().apply {
-            append(tagSize.getHeader().decToBin(8))
-            append((filterValue.value ?: 0).decToBin(3))
-            append(tableItem?.partitionValue?.decToBin(3))
-            append(companyPrefix.toInt().decToBin(tableItem?.m ?: 0))
-            append(assetType.toInt().decToBin(tableItem?.n ?: 0))
-            append(serial.decToBin(tagSize.getSerialBitCount() + (remainder ?: 0)))
-        }.toString()
+        remainder = (ceil(tagSize.value / 16.0) * 16).toInt() - tagSize.value
+        return try {
+            StringBuilder().apply {
+                append(tagSize.getHeader().decToBin(8))
+                append(filterValue.value.decToBin(3))
+                append(tableItem.partitionValue.decToBin(3))
+                append(companyPrefix.toInt().decToBin(tableItem.m))
+                append(assetType.toInt().decToBin(tableItem.n))
+                append(serial.decToBin(tagSize.getSerialBitCount() + (remainder ?: 0)))
+            }.toString()
+        } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
+            EMPTY_STRING
+        }
     }
 
     fun validateCompanyPrefix() {

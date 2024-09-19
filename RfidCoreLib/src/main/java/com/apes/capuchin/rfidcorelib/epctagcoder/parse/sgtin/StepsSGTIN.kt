@@ -26,7 +26,6 @@ class StepsSGTIN : ChoiceStep, ExtensionDigitStep, ItemReferenceStep, SerialStep
     var rfidTag: String? = null
     var epcTagURI: String? = null
     var epcPureIdentityURI: String? = null
-    var tableItem: TableItem? = null
     var remainder: Int? = null
 
     override fun build(): ParseSGTIN = ParseSGTIN(this)

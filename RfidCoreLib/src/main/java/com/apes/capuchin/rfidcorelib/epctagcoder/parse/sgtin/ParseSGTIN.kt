@@ -18,6 +18,7 @@ import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.fill
 import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.hexToBin
 import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.strZero
 import com.apes.capuchin.rfidcorelib.epctagcoder.util.Converter.stringToBin
+import com.apes.capuchin.rfidcorelib.utils.EMPTY_STRING
 import java.util.regex.Pattern
 import kotlin.math.ceil
 
@@ -35,13 +36,15 @@ class ParseSGTIN(steps: StepsSGTIN) {
     private var prefixLength = steps.prefixLength ?: PrefixLengthEnum.DIGIT_6
     private var tagSize = steps.tagSize ?: SGTINTagSizeEnum.BITS_96
     private var filterValue = steps.filterValue ?: SGTINFilterValueEnum.ALL_OTHERS_0
-    private var tableItem = steps.tableItem ?: TableItem()
+    private lateinit var tableItem: TableItem
 
     private val sgtin: SGTIN = SGTIN()
 
     companion object {
-        const val EPC_TAG_URI_PATTERN = "(urn:epc:tag:sgtin-)(96|198):([0-7])\\.(\\d+)\\.([0-8])(\\d+)\\.(\\w+)"
-        const val EPC_PURE_IDENTITY_URI_PATTERN = "(urn:epc:id:sgtin):(\\d+)\\.([0-8])(\\d+)\\.(\\w+)"
+        const val EPC_TAG_URI_PATTERN =
+            "(urn:epc:tag:sgtin-)(96|198):([0-7])\\.(\\d+)\\.([0-8])(\\d+)\\.(\\w+)"
+        const val EPC_PURE_IDENTITY_URI_PATTERN =
+            "(urn:epc:id:sgtin):(\\d+)\\.([0-8])(\\d+)\\.(\\w+)"
         const val EPC_SCHEME = "sgtin"
         const val APPLICATION_IDENTIFIER = "AI 414 + AI 254"
         const val EPC_PURE_IDENTITY_URI_FORMAT = "urn:epc:id:sgtin:%s.%s%s.%s"
@@ -62,27 +65,31 @@ class ParseSGTIN(steps: StepsSGTIN) {
         val filterBin = inputBin.substring(8, 11)
         val partitionBin = inputBin.substring(11, 14)
 
-        tableItem = sgtinPartitionTableList.getPartitionByValue(
-            partitionBin.binToDec().toInt()
-        ) ?: TableItem()
+        tagSize = SGTINTagSizeEnum.findByValue(SGTINHeaderEnum.findByValue(headerBin).getTagSize())
+        require(tagSize != SGTINTagSizeEnum.BITS_96) { "Tag size is invalid" }
 
-        val filterDec = filterBin.toLong(2).toString()
-        val companyPrefixBin = inputBin.substring(14, 14 + (tableItem.m ?: 0))
+        tableItem = sgtinPartitionTableList.getPartitionByValue(partitionBin.binToDec().toInt())
+
+        val filterDec = filterBin.toInt(2)
+
+        val companyPrefixBin = inputBin.substring(14, 14 + tableItem.m)
+        require(companyPrefixBin.length == tableItem.m) { "Company Prefix is invalid" }
+
         val itemReferenceWithExtensionBin = inputBin.substring(
-            14 + (tableItem.m ?: 0),
-            14 + (tableItem.m ?: 0) + (tableItem.n ?: 0)
+            14 + tableItem.m,
+            14 + tableItem.m + tableItem.n
         )
-        var serialBin = inputBin
-            .substring(14 + (tableItem.m ?: 0) + (tableItem.n ?: 0))
+        require(itemReferenceWithExtensionBin.length == tableItem.n) { "Item Reference is invalid" }
+
+        var serialBin = inputBin.substring(14 + tableItem.m + tableItem.n)
+        require(serialBin.length == tagSize.getSerialBitCount()) { "Serial is invalid" }
+
         val companyPrefixDec = companyPrefixBin.binToDec()
         val itemReferenceWithExtensionDec = itemReferenceWithExtensionBin
             .binToDec()
-            .strZero(tableItem.digits ?: 0)
+            .strZero(tableItem.digits)
         val extensionDec = itemReferenceWithExtensionDec.substring(0, 1)
 
-        tagSize = SGTINTagSizeEnum.findByValue(
-            SGTINHeaderEnum.findByValue(headerBin).getTagSize()
-        )
         itemReference = itemReferenceWithExtensionDec.substring(1)
         serial = when (tagSize.getSerialBitCount()) {
             140 -> {
@@ -92,14 +99,14 @@ class ParseSGTIN(steps: StepsSGTIN) {
 
             else -> serialBin.binToDec()
         }
-        companyPrefix = companyPrefixDec.strZero(tableItem.l ?: 0)
+        companyPrefix = companyPrefixDec.strZero(tableItem.l)
         extensionDigit = SGTINExtensionDigitEnum.findByValue(extensionDec.toInt())
-        filterValue = SGTINFilterValueEnum.findByValue(filterDec.toInt())
-        prefixLength = PrefixLengthEnum.findByCode(tableItem.l ?: 0)
+        filterValue = SGTINFilterValueEnum.findByValue(filterDec)
+        prefixLength = PrefixLengthEnum.findByCode(tableItem.l)
     }
 
     fun handleParseWithoutRfidTag(sgtinPartitionTableList: SGTINPartitionTableList) {
-        tableItem = sgtinPartitionTableList.getPartitionByL((prefixLength.value ?: 0)) ?: TableItem()
+        tableItem = sgtinPartitionTableList.getPartitionByL(prefixLength.value)
         when {
             companyPrefix.isEmpty() -> {
                 when {
@@ -153,9 +160,12 @@ class ParseSGTIN(steps: StepsSGTIN) {
             else -> {
                 when {
                     companyPrefix.isEmpty() -> {
-                        throw IllegalArgumentException("Company Prefix is invalid. Length not " +
-                                "found in the partition table")
+                        throw IllegalArgumentException(
+                            "Company Prefix is invalid. Length not " +
+                                    "found in the partition table"
+                        )
                     }
+
                     else -> {
                         prefixLength = PrefixLengthEnum.findByCode(companyPrefix.length)
                         validateExtensionDigitAndItemReference()
@@ -168,68 +178,80 @@ class ParseSGTIN(steps: StepsSGTIN) {
 
     fun parse() {
         val sgtinPartitionTableList = SGTINPartitionTableList()
-        when {
-            rfidTag.isEmpty() -> handleParseWithoutRfidTag(sgtinPartitionTableList)
-            else -> handleParseWithRfidTag(sgtinPartitionTableList)
-        }
-        val outputBin = getBinary()
-        val outputHex = outputBin.binToHex()
-        sgtin.apply {
-            epcScheme = EPC_SCHEME
-            applicationIdentifier = APPLICATION_IDENTIFIER
-            tagSize = this@ParseSGTIN.tagSize.value.toString()
-            filterValue = this@ParseSGTIN.filterValue.value.toString()
-            partitionValue = this@ParseSGTIN.tableItem.partitionValue?.toString().orEmpty()
-            prefixLength = this@ParseSGTIN.prefixLength.value.toString()
-            companyPrefix = this@ParseSGTIN.companyPrefix
-            itemReference = this@ParseSGTIN.itemReference
-            extensionDigit = this@ParseSGTIN.extensionDigit.value.toString()
-            serial = this@ParseSGTIN.serial
-            checkDigit = getCheckDigit().toString()
-            epcPureIdentityURI = String.format(
-                EPC_PURE_IDENTITY_URI_FORMAT,
-                this@ParseSGTIN.companyPrefix,
-                this@ParseSGTIN.extensionDigit.value,
-                this@ParseSGTIN.itemReference,
-                this@ParseSGTIN.serial
-            )
-            epcTagURI = String.format(
-                EPC_TAG_URI_FORMAT,
-                this@ParseSGTIN.tagSize.value,
-                this@ParseSGTIN.filterValue.value,
-                this@ParseSGTIN.companyPrefix,
-                this@ParseSGTIN.extensionDigit.value,
-                this@ParseSGTIN.itemReference,
-                this@ParseSGTIN.serial
-            )
-            epcRawURI = String.format(
-                EPC_RAW_URI_FORMAT,
-                (this@ParseSGTIN.tagSize.value ?: 0) + this@ParseSGTIN.remainder,
-                outputHex
-            )
-            binary = outputBin
-            rfidTag = outputHex
+
+        try {
+            when {
+                rfidTag.isEmpty() -> handleParseWithoutRfidTag(sgtinPartitionTableList)
+                else -> handleParseWithRfidTag(sgtinPartitionTableList)
+            }
+
+            val outputBin = getBinary()
+            val outputHex = outputBin.binToHex()
+            sgtin.apply {
+                epcScheme = EPC_SCHEME
+                applicationIdentifier = APPLICATION_IDENTIFIER
+                tagSize = this@ParseSGTIN.tagSize.value.toString()
+                filterValue = this@ParseSGTIN.filterValue.value.toString()
+                partitionValue = this@ParseSGTIN.tableItem.partitionValue.toString()
+                prefixLength = this@ParseSGTIN.prefixLength.value.toString()
+                companyPrefix = this@ParseSGTIN.companyPrefix
+                itemReference = this@ParseSGTIN.itemReference
+                extensionDigit = this@ParseSGTIN.extensionDigit.value.toString()
+                serial = this@ParseSGTIN.serial
+                checkDigit = getCheckDigit().toString()
+                epcPureIdentityURI = String.format(
+                    EPC_PURE_IDENTITY_URI_FORMAT,
+                    this@ParseSGTIN.companyPrefix,
+                    this@ParseSGTIN.extensionDigit.value,
+                    this@ParseSGTIN.itemReference,
+                    this@ParseSGTIN.serial
+                )
+                epcTagURI = String.format(
+                    EPC_TAG_URI_FORMAT,
+                    this@ParseSGTIN.tagSize.value,
+                    this@ParseSGTIN.filterValue.value,
+                    this@ParseSGTIN.companyPrefix,
+                    this@ParseSGTIN.extensionDigit.value,
+                    this@ParseSGTIN.itemReference,
+                    this@ParseSGTIN.serial
+                )
+                epcRawURI = String.format(
+                    EPC_RAW_URI_FORMAT,
+                    this@ParseSGTIN.tagSize.value + this@ParseSGTIN.remainder,
+                    outputHex
+                )
+                binary = outputBin
+                rfidTag = outputHex
+            }
+        } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
+            throw IllegalArgumentException("SGTIN is invalid")
         }
     }
 
     fun getBinary(): String {
-        remainder = (ceil((tagSize.value ?: 0) / 16.0) * 16).toInt() - (tagSize.value ?: 0)
-        return StringBuilder().apply {
-            append(tagSize.getHeader().decToBin(8))
-            append((filterValue.value ?: 0).decToBin(3))
-            append(tableItem.partitionValue?.decToBin(3))
-            append(companyPrefix.toInt().decToBin(tableItem.m ?: 0))
-            append("${extensionDigit.value}$itemReference".toInt().decToBin(tableItem.n ?: 0))
-            when (tagSize) {
-                SGTINTagSizeEnum.BITS_198 ->
-                    append(serial.stringToBin(7).fill(tagSize.getSerialBitCount() + remainder))
+        remainder = (ceil(tagSize.value / 16.0) * 16).toInt() - tagSize.value
+        return try {
+            StringBuilder().apply {
+                append(tagSize.getHeader().decToBin(8))
+                append((filterValue.value ?: 0).decToBin(3))
+                append(tableItem.partitionValue.decToBin(3))
+                append(companyPrefix.toInt().decToBin(tableItem.m))
+                append("${extensionDigit.value}$itemReference".toInt().decToBin(tableItem.n))
+                when (tagSize) {
+                    SGTINTagSizeEnum.BITS_198 ->
+                        append(serial.stringToBin(7).fill(tagSize.getSerialBitCount() + remainder))
 
-                SGTINTagSizeEnum.BITS_96 ->
-                    append(serial.decToBin(tagSize.getSerialBitCount() + remainder))
+                    SGTINTagSizeEnum.BITS_96 ->
+                        append(serial.decToBin(tagSize.getSerialBitCount() + remainder))
 
-                else -> Unit
-            }
-        }.toString()
+                    else -> Unit
+                }
+            }.toString()
+        } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
+            EMPTY_STRING
+        }
     }
 
     fun getCheckDigit(): Int {
@@ -267,6 +289,7 @@ class ParseSGTIN(steps: StepsSGTIN) {
                                     "Should be less than or equal 274,877,906,943"
                         )
                     }
+
                     serial.startsWith("0") -> {
                         throw IllegalArgumentException("Serial with leading zeros is not allowed")
                     }
@@ -281,9 +304,11 @@ class ParseSGTIN(steps: StepsSGTIN) {
         val value = StringBuilder().append(extensionDigit.value).append(itemReference).toString()
         when {
             value.length != tableItem.digits -> {
-                throw IllegalArgumentException("Concatenation between Extension Digit " +
-                        "\"${extensionDigit.value}\" and Item Reference \"$itemReference\" has " +
-                        "$value.length length and should have ${tableItem.digits} length")
+                throw IllegalArgumentException(
+                    "Concatenation between Extension Digit " +
+                            "\"${extensionDigit.value}\" and Item Reference \"$itemReference\" has " +
+                            "$value.length length and should have ${tableItem.digits} length"
+                )
             }
         }
     }

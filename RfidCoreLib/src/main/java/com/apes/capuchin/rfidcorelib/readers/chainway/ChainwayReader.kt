@@ -1,5 +1,6 @@
 package com.apes.capuchin.rfidcorelib.readers.chainway
 
+import android.bluetooth.BluetoothDevice
 import android.content.Context
 import com.apes.capuchin.capuchinrfidlib.lib.R
 import com.apes.capuchin.rfidcorelib.utils.BEEP_DELAY_TIME_MAX
@@ -27,6 +28,7 @@ import com.rscja.deviceapi.entity.UHFTAGInfo
 import com.rscja.deviceapi.interfaces.ConnectionStatus
 import com.rscja.deviceapi.interfaces.IUHF
 import com.rscja.deviceapi.interfaces.KeyEventCallback
+import com.rscja.deviceapi.interfaces.ScanBTCallback
 import java.util.concurrent.Executors
 import java.util.logging.Logger
 
@@ -67,7 +69,8 @@ class ChainwayReader(
     }
 
     override fun disconnectReader() {
-        isReaderConnected = reader?.free() ?: btReader?.free() ?: false
+        val result = reader?.free() ?: btReader?.free()
+        isReaderConnected = !(result ?: false)
         soundPlayer.releaseSoundPool()
         scannerManager.closeScanner()
         notifyObservers(
@@ -204,31 +207,34 @@ class ChainwayReader(
                     stopRead()
                 }
             })
-            btReader?.connect(deviceAddress) { connectionStatus, _ ->
-                when (connectionStatus) {
-                    ConnectionStatus.CONNECTED -> {
-                        initSoundPlayer()
-                        initBarcodeReader()
-                        notifyObservers(
-                            EasyResponse(
-                                success = SUCCESS,
-                                message = context.getString(R.string.reader_connected),
-                                code = CONNECTION_SUCCEEDED_CODE
-                            )
-                        )
-                    }
 
-                    ConnectionStatus.DISCONNECTED -> {
-                        notifyObservers(
-                            EasyResponse(
-                                success = ERROR,
-                                message = context.getString(R.string.reader_connection_failed),
-                                code = CONNECTION_FAILED_CODE
+            btReader?.startScanBTDevices { device, _, _ ->
+                btReader?.connect(device.address) { connectionStatus, _ ->
+                    when (connectionStatus) {
+                        ConnectionStatus.CONNECTED -> {
+                            initSoundPlayer()
+                            initBarcodeReader()
+                            notifyObservers(
+                                EasyResponse(
+                                    success = SUCCESS,
+                                    message = context.getString(R.string.reader_connected),
+                                    code = CONNECTION_SUCCEEDED_CODE
+                                )
                             )
-                        )
-                    }
+                        }
 
-                    else -> Unit
+                        ConnectionStatus.DISCONNECTED -> {
+                            notifyObservers(
+                                EasyResponse(
+                                    success = ERROR,
+                                    message = context.getString(R.string.reader_connection_failed),
+                                    code = CONNECTION_FAILED_CODE
+                                )
+                            )
+                        }
+
+                        else -> Unit
+                    }
                 }
             }
         }

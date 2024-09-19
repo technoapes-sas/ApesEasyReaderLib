@@ -1,6 +1,6 @@
 package com.apes.capuchin.rfidcorelib.epctagcoder.option.grai
 
-enum class GRAIFilterValueEnum(val value: Int? = null) {
+enum class GRAIFilterValueEnum(val value: Int) {
 
     ALL_OTHERS_0(value = 0),
     RAIL_VEHICLER(value = 1),
@@ -10,7 +10,7 @@ enum class GRAIFilterValueEnum(val value: Int? = null) {
     RESERVED_4(value = 5),
     RESERVED_5(value = 6),
     RESERVED_6(value = 7),
-    UNKNOWN;
+    UNKNOWN(value = 0);
 
     companion object {
         fun findByValue(value: Int?): GRAIFilterValueEnum {
