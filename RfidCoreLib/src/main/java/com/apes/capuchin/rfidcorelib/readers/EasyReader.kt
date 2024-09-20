@@ -89,14 +89,26 @@ abstract class EasyReader : EasyReaderObserver() {
     private fun handleReportedArg(arg: Any?) {
         CoroutineScope(Dispatchers.IO).launch {
             when {
-                arg is StartStopReading && readType == ReadTypeEnum.INVENTORY && readMode.isNotifyWhenStopped() ->
-                    notifyObservers(easyReaderInventory.value)
+                arg is StartStopReading && readMode.isNotifyWhenStopped() ->
+                    handleReadWhenStopped()
 
                 else ->
                     update(arg)
             }
         }.runCatching {
             throw IllegalArgumentException("An error has occurred while reading.")
+        }
+    }
+
+    private fun handleReadWhenStopped() {
+        when (readType) {
+            ReadTypeEnum.SEARCH_TAG -> Unit
+
+            ReadTypeEnum.HIGH_READING -> HighReading(
+                easyReaderInventory.value.itemsRead.sortedByDescending { it.rssi }.first()
+            )
+
+            ReadTypeEnum.INVENTORY -> notifyObservers(easyReaderInventory.value)
         }
     }
 
@@ -107,33 +119,29 @@ abstract class EasyReader : EasyReaderObserver() {
                     when (readType) {
                         ReadTypeEnum.SEARCH_TAG -> LocateTag(search = epc, rssi = rssi.toLong())
 
-                        ReadTypeEnum.HIGH_READING -> evaluateTag(epc, rssi) { baseReading ->
-                            HighReading(baseReading)
-                        }
-
-                        ReadTypeEnum.INVENTORY -> evaluateTag(epc, rssi) { baseReading ->
-                            setBaseReading(baseReading)
-                        }
+                        else -> evaluateTag(epc, rssi)
                     }
                 }.filter {
                     when (readType) {
-                        ReadTypeEnum.SEARCH_TAG,
-                        ReadTypeEnum.HIGH_READING -> true
-                        ReadTypeEnum.INVENTORY -> continueReading(easyReaderInventory.value)
+                        ReadTypeEnum.SEARCH_TAG -> true
+
+                        ReadTypeEnum.HIGH_READING, ReadTypeEnum.INVENTORY ->
+                            continueReading(easyReaderInventory.value)
                     }
                 }.catch {
                     Log.e("EasyReader", "An error has occurred while reading.", it)
                 }.collect { reading ->
+
                     notifyObservers(reading)
                 }
         }
     }
 
-    private fun evaluateTag(epc: String, rssi: Int, action: (BaseReading) -> Unit) {
+    private fun evaluateTag(epc: String, rssi: Int) {
         val baseReading = getBaseReading(epc)
         baseReading.rssi = rssi
         when {
-            validateCompanyPrefix(baseReading) -> action(baseReading)
+            validateCompanyPrefix(baseReading) -> setBaseReading(baseReading)
 
             else -> NONE(epc)
         }
