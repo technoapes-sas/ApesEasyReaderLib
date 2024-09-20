@@ -72,9 +72,7 @@ abstract class EasyReaderObserver {
     }
 
     private suspend fun handleHighReading(arg: HighReading) {
-        arg.highReading?.let {
-            _onItemsRead.emit(EasyReaderInventory(itemsRead = mutableSetOf(it)))
-        }
+        _onItemsRead.emit(EasyReaderInventory(itemsRead = mutableSetOf(arg.highReading)))
     }
 
     private suspend fun handleEasyReaderInventory(arg: EasyReaderInventory) {

@@ -1,5 +1,6 @@
 package com.apes.capuchin.rfidcorelib.readers
 
+import android.util.Log
 import com.apes.capuchin.rfidcorelib.EasyReaderObserver
 import com.apes.capuchin.rfidcorelib.enums.AntennaPowerLevelsEnum
 import com.apes.capuchin.rfidcorelib.enums.BeeperLevelsEnum
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 abstract class EasyReader : EasyReaderObserver() {
@@ -81,51 +83,20 @@ abstract class EasyReader : EasyReaderObserver() {
     }
 
     protected fun notifyItemRead(epc: String, rssi: Int) {
-        //inventoryFlow.update { Pair(first = epc, second = rssi) }
-        CoroutineScope(Dispatchers.IO).launch {
-            if (epc.isEmpty() || rssi == 0) return@launch
-
-            val result: Any = when (readType) {
-                ReadTypeEnum.SEARCH_TAG -> LocateTag(search = epc, rssi = rssi.toLong())
-                else -> {
-                    val baseReading = getBaseReading(epc)
-                    baseReading.rssi = rssi
-                    when {
-                        validateCompanyPrefix(baseReading) -> setBaseReading(baseReading)
-                        else -> NONE(epc)
-                    }
-                }
-            }
-
-            val isContinue = when (readType) {
-                ReadTypeEnum.SEARCH_TAG -> true
-                else -> continueReading(easyReaderInventory.value)
-            }
-
-            if (isContinue) {
-                notifyObservers(result)
-            }
-        }
+        inventoryFlow.update { Pair(first = epc, second = rssi) }
     }
 
     private fun handleReportedArg(arg: Any?) {
         CoroutineScope(Dispatchers.IO).launch {
-            update(arg)
-            if (arg is StartStopReading && readMode.isNotifyWhenStopped()) {
-                handleStartStopReading(arg)
+            when {
+                arg is StartStopReading && readType == ReadTypeEnum.INVENTORY && readMode.isNotifyWhenStopped() ->
+                    notifyObservers(easyReaderInventory.value)
+
+                else ->
+                    update(arg)
             }
         }.runCatching {
             throw IllegalArgumentException("An error has occurred while reading.")
-        }
-    }
-
-    private fun handleStartStopReading(arg: StartStopReading) {
-        when {
-            readType == ReadTypeEnum.INVENTORY && arg.startStop != true ->
-                notifyObservers(easyReaderInventory.value)
-
-            readType == ReadTypeEnum.HIGH_READING && arg.startStop != true ->
-                observeInventory()
         }
     }
 
@@ -135,49 +106,52 @@ abstract class EasyReader : EasyReaderObserver() {
                 .map { (epc, rssi) ->
                     when (readType) {
                         ReadTypeEnum.SEARCH_TAG -> LocateTag(search = epc, rssi = rssi.toLong())
-                        else -> {
-                            val baseReading = getBaseReading(epc)
-                            baseReading.rssi = rssi
-                            when {
-                                validateCompanyPrefix(baseReading) -> setBaseReading(baseReading)
-                                else -> NONE(epc)
-                            }
+
+                        ReadTypeEnum.HIGH_READING -> evaluateTag(epc, rssi) { baseReading ->
+                            HighReading(baseReading)
+                        }
+
+                        ReadTypeEnum.INVENTORY -> evaluateTag(epc, rssi) { baseReading ->
+                            setBaseReading(baseReading)
                         }
                     }
                 }.filter {
                     when (readType) {
-                        ReadTypeEnum.SEARCH_TAG -> true
-                        else -> continueReading(easyReaderInventory.value)
+                        ReadTypeEnum.SEARCH_TAG,
+                        ReadTypeEnum.HIGH_READING -> true
+                        ReadTypeEnum.INVENTORY -> continueReading(easyReaderInventory.value)
                     }
                 }.catch {
-                    it.printStackTrace()
+                    Log.e("EasyReader", "An error has occurred while reading.", it)
                 }.collect { reading ->
                     notifyObservers(reading)
                 }
         }
     }
 
-    private fun observeInventory() {
-        CoroutineScope(Dispatchers.IO).launch {
-            easyReaderInventory.filter { it.itemsRead.isNotEmpty() }.map { inventory ->
-                val readings = inventory.itemsRead.sortedByDescending { it.rssi }
-                clearBuffer()
-                readings
-            }.catch {
-                throw IllegalArgumentException("An error has occurred while reading.")
-            }.collect { notifyObservers(HighReading(it.first())) }
+    private fun evaluateTag(epc: String, rssi: Int, action: (BaseReading) -> Unit) {
+        val baseReading = getBaseReading(epc)
+        baseReading.rssi = rssi
+        when {
+            validateCompanyPrefix(baseReading) -> action(baseReading)
+
+            else -> NONE(epc)
         }
     }
 
     private fun getBaseReading(epc: String): BaseReading {
-        return when (coder) {
-            CoderEnum.SGTIN ->
-                (ParseSGTIN.builder().withEPCTag(epc).build() as ParseSGTIN).getSGTIN()
+        return try {
+            when (coder) {
+                CoderEnum.SGTIN ->
+                    (ParseSGTIN.builder().withEPCTag(epc).build() as ParseSGTIN).getSGTIN()
 
-            CoderEnum.GRAI ->
-                (ParseGRAI.builder().withEPCTag(epc).build() as ParseGRAI).getGRAI()
+                CoderEnum.GRAI ->
+                    (ParseGRAI.builder().withEPCTag(epc).build() as ParseGRAI).getGRAI()
 
-            else -> NONE(epc)
+                else -> NONE(epc)
+            }
+        } catch (e: IllegalArgumentException) {
+            NONE(epc)
         }
     }
 

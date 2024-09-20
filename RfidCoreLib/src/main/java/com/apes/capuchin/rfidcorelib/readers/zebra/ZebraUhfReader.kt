@@ -38,6 +38,7 @@ class ZebraUhfReader(
     var scannerManager: ScannerManager = ScannerManager(context = context, this)
 
     private var device: ReaderDevice? = null
+    private var isReaderConnected: Boolean = false
 
     private val readingObserver = object : RfidEventsListener {
         override fun eventReadNotify(events: RfidReadEvents?) {
@@ -54,32 +55,39 @@ class ZebraUhfReader(
         }
     }
 
-    var reader: RFIDReader? = null
+    lateinit var reader: RFIDReader
 
     @Synchronized
     override fun connectReader() {
         readers.connectReader(null) { reader ->
             this.reader = reader
+            isReaderConnected = true
             configureReader()
-            notifyObservers(EasyResponse(
-                success = SUCCESS,
-                message = context.getString(R.string.reader_connected),
-                code = CONNECTION_SUCCEEDED_CODE
-            ))
+            notifyObservers(
+                EasyResponse(
+                    success = SUCCESS,
+                    message = context.getString(R.string.reader_connected),
+                    code = CONNECTION_SUCCEEDED_CODE
+                )
+            )
         }
     }
 
     override fun disconnectReader() {
-        reader?.disconnect()
-        reader = null
-        notifyObservers(EasyResponse(
-            success = SUCCESS,
-            message = context.getString(R.string.disconnect_reader),
-            code = CONNECTION_CLOSE_CODE
-        ))
+        if (isReaderConnected()) {
+            reader.disconnect()
+            isReaderConnected = false
+            notifyObservers(
+                EasyResponse(
+                    success = SUCCESS,
+                    message = context.getString(R.string.disconnect_reader),
+                    code = CONNECTION_CLOSE_CODE
+                )
+            )
+        }
     }
 
-    override fun isReaderConnected(): Boolean = reader?.isConnected ?: false
+    override fun isReaderConnected(): Boolean = isReaderConnected
 
     override fun initRead() {
         when (readerMode) {
@@ -87,22 +95,30 @@ class ZebraUhfReader(
             ReaderModeEnum.RFID_MODE -> {
                 when (readType) {
                     ReadTypeEnum.SEARCH_TAG ->
-                        reader?.Actions?.TagLocationing?.Perform(
+                        reader.Actions.TagLocationing.Perform(
                             searchTag,
                             null,
                             null
                         )
-                    else-> reader?.Actions?.Inventory?.perform()
+
+                    ReadTypeEnum.HIGH_READING -> {
+                        reader.Actions.getReadTags(1)[0].apply {
+                            notifyItemRead(epc = tagID, rssi = peakRSSI.toInt())
+                        }
+                    }
+                    else -> reader.Actions.Inventory.perform()
                 }
             }
         }
+
     }
 
     override fun stopRead() {
         when (readType) {
             ReadTypeEnum.SEARCH_TAG ->
-                reader?.Actions?.TagLocationing?.Stop()
-            else-> reader?.Actions?.Inventory?.stop()
+                reader.Actions.TagLocationing.Stop()
+
+            else -> reader.Actions.Inventory.stop()
         }
     }
 
@@ -144,7 +160,7 @@ class ZebraUhfReader(
     }
 
     override fun RFIDReaderDisappeared(device: ReaderDevice?) {
-        if (device?.name == reader?.hostName) {
+        if (device?.name == reader.hostName) {
             disconnectReader()
         }
     }
@@ -175,16 +191,15 @@ class ZebraUhfReader(
     override fun dcssdkEventAuxScannerAppeared(p0: DCSScannerInfo?, p1: DCSScannerInfo?) = Unit
 
     private fun configureReader() {
-        reader?.let {
-            readerConfiguration.configureReader(it, readingObserver)
-            scannerManager.setupScannerSDK(it)
-        }
+        readerConfiguration.configureReader(reader, readingObserver)
+        scannerManager.setupScannerSDK(reader)
     }
 
     private fun handleStatusEvent(statusEventData: RfidStatusEvents) {
         when (statusEventData.StatusEventData.statusEventType) {
             STATUS_EVENT_TYPE.HANDHELD_TRIGGER_EVENT -> {
-                val handheldEvent = statusEventData.StatusEventData.HandheldTriggerEventData.handheldEvent
+                val handheldEvent =
+                    statusEventData.StatusEventData.HandheldTriggerEventData.handheldEvent
                 when (handheldEvent) {
                     HANDHELD_TRIGGER_EVENT_TYPE.HANDHELD_TRIGGER_PRESSED -> {
                         CoroutineScope(Dispatchers.IO).launch {
@@ -192,6 +207,7 @@ class ZebraUhfReader(
                             notifyObservers(StartStopReading(true))
                         }
                     }
+
                     HANDHELD_TRIGGER_EVENT_TYPE.HANDHELD_TRIGGER_RELEASED -> {
                         CoroutineScope(Dispatchers.IO).launch {
                             stopRead()
@@ -200,6 +216,7 @@ class ZebraUhfReader(
                     }
                 }
             }
+
             STATUS_EVENT_TYPE.DISCONNECTION_EVENT -> disconnectReader()
         }
     }

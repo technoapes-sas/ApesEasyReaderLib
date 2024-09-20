@@ -88,20 +88,12 @@ class ReaderManager(private val context: Context) {
             }
 
             observeEvent(onReaderConnectionFailed) { response ->
-                _connectionState.update {
-                    it.copy(
-                        isReaderConnected = false,
-                        error = response
-                    )
-                }
+                _connectionState.update { it.copy(isReaderConnected = false, error = response) }
             }
 
             observeEvent(onReaderError) { response ->
                 _connectionState.update {
-                    it.copy(
-                        isReaderConnected = isReaderConnected(),
-                        error = response
-                    )
+                    it.copy(isReaderConnected = isReaderConnected(), error = response)
                 }
             }
 
@@ -114,7 +106,7 @@ class ReaderManager(private val context: Context) {
             }
 
             observeEvent(onStartReading) { startStop ->
-                _readState.update { ReadState(isReading = startStop.startStop ?: false) }
+                _readState.update { it.copy(isReading = startStop.startStop) }
             }
 
             observeEvent(onAntennaPowerChanged) { power ->
@@ -131,15 +123,13 @@ class ReaderManager(private val context: Context) {
         }
     }
 
-    private fun applyConfig(value: Any) {
-        when (value) {
-            is ReaderModeEnum -> readerMode = value
-            is ReadModeEnum -> readMode = value
-            is ReadTypeEnum -> readType = value
-            is AntennaPowerLevelsEnum -> setAntennaPower(value)
-            is SessionControlEnum -> setSessionControl(value)
-            is BeeperLevelsEnum -> setAntennaSound(value)
-        }
+    private fun applyConfig(value: ConfigReader) {
+        readerMode = value.readerMode ?: ReaderModeEnum.RFID_MODE
+        readMode = value.readMode ?: ReadModeEnum.NOTIFY_BY_ITEM_READ
+        readType = value.readType ?: ReadTypeEnum.INVENTORY
+        setAntennaPower(value.antennaPower ?: AntennaPowerLevelsEnum.MAX)
+        setSessionControl(value.sessionControl ?: SessionControlEnum.S0)
+        setAntennaSound(value.beeper ?: BeeperLevelsEnum.MAX)
     }
 
     fun hasConfigByModule(key: String): Boolean {
@@ -209,6 +199,7 @@ class ReaderManager(private val context: Context) {
 
     fun clearBuffer() {
         reader?.clearBuffer()
+        _readState.update { ReadState() }
     }
 
     fun setSessionControl(session: SessionControlEnum) {

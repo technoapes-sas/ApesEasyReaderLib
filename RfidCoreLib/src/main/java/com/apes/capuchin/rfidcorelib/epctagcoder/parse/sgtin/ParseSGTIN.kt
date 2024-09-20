@@ -1,5 +1,6 @@
 package com.apes.capuchin.rfidcorelib.epctagcoder.parse.sgtin
 
+import android.util.Log
 import com.apes.capuchin.rfidcorelib.epctagcoder.option.PrefixLengthEnum
 import com.apes.capuchin.rfidcorelib.epctagcoder.option.TableItem
 import com.apes.capuchin.rfidcorelib.epctagcoder.option.sgtin.SGTINExtensionDigitEnum
@@ -66,7 +67,7 @@ class ParseSGTIN(steps: StepsSGTIN) {
         val partitionBin = inputBin.substring(11, 14)
 
         tagSize = SGTINTagSizeEnum.findByValue(SGTINHeaderEnum.findByValue(headerBin).getTagSize())
-        require(tagSize != SGTINTagSizeEnum.BITS_96) { "Tag size is invalid" }
+        require(tagSize == SGTINTagSizeEnum.BITS_96) { "Tag size is invalid" }
 
         tableItem = sgtinPartitionTableList.getPartitionByValue(partitionBin.binToDec().toInt())
 
@@ -224,8 +225,8 @@ class ParseSGTIN(steps: StepsSGTIN) {
                 rfidTag = outputHex
             }
         } catch (e: IllegalArgumentException) {
-            e.printStackTrace()
-            throw IllegalArgumentException("SGTIN is invalid")
+            Log.e("ParseGRAI", "RFID Tag is invalid: $rfidTag", e)
+            EMPTY_STRING
         }
     }
 

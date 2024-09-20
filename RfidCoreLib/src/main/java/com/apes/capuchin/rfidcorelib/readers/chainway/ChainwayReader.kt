@@ -1,6 +1,5 @@
 package com.apes.capuchin.rfidcorelib.readers.chainway
 
-import android.bluetooth.BluetoothDevice
 import android.content.Context
 import com.apes.capuchin.capuchinrfidlib.lib.R
 import com.apes.capuchin.rfidcorelib.utils.BEEP_DELAY_TIME_MAX
@@ -28,7 +27,6 @@ import com.rscja.deviceapi.entity.UHFTAGInfo
 import com.rscja.deviceapi.interfaces.ConnectionStatus
 import com.rscja.deviceapi.interfaces.IUHF
 import com.rscja.deviceapi.interfaces.KeyEventCallback
-import com.rscja.deviceapi.interfaces.ScanBTCallback
 import java.util.concurrent.Executors
 import java.util.logging.Logger
 
@@ -89,6 +87,7 @@ class ChainwayReader(
             ReaderModeEnum.BARCODE_MODE -> scannerManager.startScan()
             else -> when (readType) {
                 ReadTypeEnum.SEARCH_TAG -> startLocated()
+                ReadTypeEnum.HIGH_READING -> readSingleTag()
                 else -> readInventory()
             }
         }
@@ -262,6 +261,11 @@ class ChainwayReader(
             BEEP_DELAY_TIME_MIN + (((BEEP_DELAY_TIME_MAX - BEEP_DELAY_TIME_MIN) * (100 - i)) / 100)
         soundPlayer.playSound(1, interval)
         notifyItemRead(epc = searchTag, rssi = i)
+    }
+
+    private fun readSingleTag() {
+        reader?.let { handleInventory(it.inventorySingleTag()) }
+        btReader?.let { handleInventory(it.inventorySingleTag()) }
     }
 
     private fun readInventory() {

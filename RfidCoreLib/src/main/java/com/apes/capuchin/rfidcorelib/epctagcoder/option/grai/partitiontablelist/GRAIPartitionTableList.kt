@@ -3,7 +3,7 @@ package com.apes.capuchin.rfidcorelib.epctagcoder.option.grai.partitiontablelist
 import com.apes.capuchin.rfidcorelib.epctagcoder.option.TableItem
 import com.apes.capuchin.rfidcorelib.epctagcoder.option.grai.GRAITagSizeEnum
 
-class GRAIPartitionTableList(tagSizeEnum: GRAITagSizeEnum) {
+class GRAIPartitionTableList {
 
     private var tableItemList: List<TableItem> = listOf(
         TableItem(partitionValue = 0, m = 40, l = 12, n = 4, digits = 0),

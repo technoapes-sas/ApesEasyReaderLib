@@ -1,5 +1,6 @@
 package com.apes.capuchin.rfidcorelib.epctagcoder.parse.grai
 
+import android.util.Log
 import com.apes.capuchin.rfidcorelib.epctagcoder.option.PrefixLengthEnum
 import com.apes.capuchin.rfidcorelib.epctagcoder.option.TableItem
 import com.apes.capuchin.rfidcorelib.epctagcoder.option.grai.GRAIFilterValueEnum
@@ -55,7 +56,7 @@ class ParseGRAI(steps: StepsGRAI) {
         val partitionBin = inputBin.substring(11, 14)
 
         tagSize = GRAITagSizeEnum.findByValue(GRAIHeaderEnum.findByValue(headerBin).getTagSize())
-        require(tagSize != GRAITagSizeEnum.BITS_96) { "Tag size is invalid" }
+        require(tagSize == GRAITagSizeEnum.BITS_96) { "Tag size is invalid" }
 
         tableItem = partitionTableList.getPartitionByValue(partitionBin.toInt(2))
 
@@ -133,7 +134,7 @@ class ParseGRAI(steps: StepsGRAI) {
 
     fun parse() {
 
-        val partitionTableList = GRAIPartitionTableList(tagSize)
+        val partitionTableList = GRAIPartitionTableList()
 
         try {
             when {
@@ -192,7 +193,7 @@ class ParseGRAI(steps: StepsGRAI) {
                 append(serial.decToBin(tagSize.getSerialBitCount() + (remainder ?: 0)))
             }.toString()
         } catch (e: IllegalArgumentException) {
-            e.printStackTrace()
+            Log.e("ParseGRAI", "RFID Tag is invalid: $rfidTag", e)
             EMPTY_STRING
         }
     }
